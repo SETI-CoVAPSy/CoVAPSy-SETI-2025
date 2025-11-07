@@ -156,7 +156,7 @@ class GilbertDriver:
         self.send_command()
 
 if __name__ == '__main__':
-    with GilbertDriver(verbose=True) as gilbert:
+    with GilbertDriver(verbose=True, auto_open=False) as gilbert:
         while True:
             for angle in [0, -20, 0, 20]*2:
                 print(f"Setting angle to {angle} degrees")
