@@ -1,4 +1,4 @@
-import serial, struct
+webots_code_jauneimport serial, struct
 from rplidar import RPLidar
 import time
 
