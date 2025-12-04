@@ -84,6 +84,10 @@ class GilbertDriverGeneric(ABC):
         """Close relevant connections."""
         pass
 
+    def log(self, message: str) -> None:
+        """Log a message (for debugging)."""
+        print(f"[{self.__class__.__name__}] {message}")
+
     @abstractmethod
     def send_command(self) -> None:
         """Send set speed and angle of the car. Will use internal state."""
