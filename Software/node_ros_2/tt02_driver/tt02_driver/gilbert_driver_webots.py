@@ -42,9 +42,9 @@ class GilbertDriverWebots(GilbertDriverGeneric):
         """
         self._verbose = verbose
         if self._verbose:
-            print("Initializing GilbertDriver (simulation) (verbose on)...")
+            self.log("Initializing GilbertDriver (simulation) (verbose on)...")
 
-        self._driver = WebotsDriver()
+        self._driver: WebotsDriver | None = None
         self.speed_mps = 0.0  # Current speed (m/s)
         self.angle_deg = 0.0  # Current steering angle (degrees)
 
@@ -54,22 +54,27 @@ class GilbertDriverWebots(GilbertDriverGeneric):
     @override
     def open(self) -> None:
         """Open relevant connections."""
-        pass
+        self._driver = WebotsDriver()
 
     @override
     def close(self) -> None:
         """Close the relevant connection."""
-        pass
+        del self._driver
+        self._driver = None
 
     @override
     def send_command(self) -> None:
         """Send set speed and angle to the Webots controller. Will use internal state."""
+        if self._driver is None:
+            raise RuntimeError("Driver not opened. Call open() before sending commands.")
         self._driver.setSteeringAngle(self.angle_deg * 3.14/180 * self.STEERING_DIRECTION)
         self._driver.setCruisingSpeed(self.speed_mps * 3.6)
 
         if self._verbose:
-            print(f"Updated speed={self.speed_mps}m/s angle={self.angle_deg}deg")
+            self.log(f"Updated speed={self.speed_mps}m/s angle={self.angle_deg}deg")
 
     def get_driver(self) -> WebotsDriver:
         """Retrieve Webots driver object."""
+        if self._driver is None:
+            raise RuntimeError("Driver not opened. Call open() before getting the driver.")
         return self._driver

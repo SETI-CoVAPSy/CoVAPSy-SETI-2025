@@ -9,7 +9,7 @@ from typing_extensions import override
 from .gilbert_driver_generic import GilbertDriverGeneric
 
 
-class GilbertDriver(GilbertDriverGeneric):
+class GilbertDriverHardware(GilbertDriverGeneric):
     """Driver for the Gilbert car (hardware)."""
 
     # === Calibration parameters ===
@@ -55,7 +55,7 @@ class GilbertDriver(GilbertDriverGeneric):
         """
         self._verbose = verbose
         if self._verbose:
-            print("Initializing GilbertDriver (verbose on)...")
+            self.log("Initializing GilbertDriver (verbose on)...")
 
         # Configure serial connection without opening it yet
         self.serial = serial.Serial()
@@ -75,7 +75,7 @@ class GilbertDriver(GilbertDriverGeneric):
         self.serial.baudrate = 115200
         self.serial.open()
         if self._verbose:
-            print(
+            self.log(
                 f"Serial connection opened at {self.serial.port} with {self.serial.baudrate}."
             )
 
@@ -84,7 +84,7 @@ class GilbertDriver(GilbertDriverGeneric):
         """Close the serial connection to the STM32 controller."""
         self.serial.close()
         if self._verbose:
-            print("Serial connection closed.")
+            self.log("Serial connection closed.")
 
     @override
     def send_command(self) -> None:
@@ -119,18 +119,18 @@ class GilbertDriver(GilbertDriverGeneric):
         )
         ret = self.serial.write(msg)
         if self._verbose:
-            print(f"Updated speed={self.speed_mps}m/s angle={self.angle_deg}deg ({ret=})")
+            self.log(f"Updated speed={self.speed_mps}m/s angle={self.angle_deg}deg ({ret=})")
 
 
 if __name__ == "__main__":
     with GilbertDriver(verbose=True, auto_open=False) as gilbert:
         while True:
             for angle in [0, -20, 0, 20] * 2:
-                print(f"Setting angle to {angle} degrees")
+                gilbert.log(f"Setting angle to {angle} degrees")
                 gilbert.set_steering_angle_deg(angle)
 
             for speed in [0, 1.0, 0, -1.0] * 2:
-                print(f"Setting speed to {speed} m/s")
+                gilbert.log(f"Setting speed to {speed} m/s")
                 gilbert.set_speed_mps(speed)
 
             gilbert.neutral()
