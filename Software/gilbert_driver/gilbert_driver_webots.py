@@ -13,7 +13,8 @@ Driver basé sur l'implémentation décrite ci-dessus pour le projet CoVAPSy.
 
 from vehicle import Driver as WebotsDriver
 
-from typing import override, Literal
+from typing import Literal
+from typing_extensions import override
 from .gilbert_driver_generic import GilbertDriverGeneric
 
 class GilbertDriverWebots(GilbertDriverGeneric):
