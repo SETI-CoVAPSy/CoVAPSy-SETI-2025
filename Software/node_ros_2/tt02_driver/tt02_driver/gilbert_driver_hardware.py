@@ -4,7 +4,8 @@ Driver for the Gilbert car (speed and steering angle control) compatible with th
 
 import serial
 import struct
-from typing import Literal, override
+from typing import Literal
+from typing_extensions import override
 from .gilbert_driver_generic import GilbertDriverGeneric
 
 
