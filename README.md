@@ -21,4 +21,4 @@ This main repository links to sub repositories:
 ## Install dependancies
 
 Please follow this tutorial :
-[`CoVAPSy SETI Dependancies Installation tutorial`](./Dependancies/README.md)
+[`CoVAPSy SETI Dependancies Installation tutorial`](./Dependancies/dependancies_install_tutorial.md)
