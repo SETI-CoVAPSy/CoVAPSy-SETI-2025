@@ -17,3 +17,8 @@ This repository contains several main folders:
 
 This main repository links to sub repositories:
 - [`CoVAPSy SETI before 2025/`](https://github.com/SETI-CoVAPSy/CoVAPSy-SETI-before-2025): Unpublished code and references by previous SETI teams for CoVAPSy.
+
+## Install dependancies
+
+Please follow this tutorial :
+[`CoVAPSy SETI Dependancies Installation tutorial`](./Dependancies/README.md)
