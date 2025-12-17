@@ -3,11 +3,19 @@
 import rclpy
 import numpy as np
 from rclpy.node import Node
-from ackermann_msgs.msg import AckermannDrive
 from controller import Lidar as WebotsLidar
-from sensor_msgs.msg import LaserScan
 from typing import Literal
 from typing_extensions import override
+import math
+
+# ROS 2 Message imports
+from ackermann_msgs.msg import AckermannDrive
+from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import TransformStamped, Quaternion
+
+#TF imports
+import tf2_ros
 
 from tt02_driver.gilbert_driver_generic import GilbertDriverGeneric
 
@@ -35,6 +43,14 @@ class TT02DriverNode(Node):
         self.target_speed = 0.0     # m/s
         self.target_angle = 0.0     # degrees
 
+        # === Odometry initialization ===
+        self.x = 0.0
+        self.y = 0.0
+        self.theta = 0.0
+        self.last_time = self.get_clock().now()
+        self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+
         # === Common not initialized ===
         self.driver: GilbertDriverGeneric
         self.lidar_nb_rays: int
@@ -59,7 +75,7 @@ class TT02DriverNode(Node):
             10
         )
         self.publisher = self.create_publisher(LaserScan, self.TOPIC_LIDAR, 10)
-        self.timer = self.create_timer(0.02, self.update)
+        #self.timer = self.create_timer(0.02, self.update)
         self.get_logger().info("TT02 driver started.")
 
     def _init_hardware(self) -> None:
@@ -113,10 +129,57 @@ class TT02DriverNode(Node):
                 self.get_logger().warn("Simulation ended.")
                 rclpy.shutdown()
                 return
+
+        current_time = self.get_clock().now()
+        dt = (current_time - self.last_time).nanoseconds / 1e9
+
+        # --- Odometry Calculation (Dead Reckoning) ---
+        v = self.target_speed
+        alpha = self.target_angle * math.pi / 180.0
+        L = 0.257  # from tt02 proto file
+
+        # Ackermann kinematic model
+        self.x += v * math.cos(self.theta) * dt
+        self.y += v * math.sin(self.theta) * dt
+        self.theta += (v / L) * math.tan(alpha) * dt
+
+        self.publish_odometry(current_time)
+        self.last_time = current_time
             
         self.driver.set_speed_mps(self.target_speed)
         self.driver.set_steering_angle_deg(self.target_angle)
         self.publish_scan()
+
+    def publish_odometry(self, time):
+        # 1. Broadcast Transform
+        t = TransformStamped()
+        t.header.stamp = time.to_msg()
+        t.header.frame_id = 'odom'
+        t.child_frame_id = 'base_link'
+        t.transform.translation.x = self.x
+        t.transform.translation.y = self.y
+        t.transform.rotation = self.yaw_to_quaternion(self.theta)
+        self.tf_broadcaster.sendTransform(t)
+
+        # 2. Publish Odometry Message
+        odom = Odometry()
+        odom.header.stamp = time.to_msg()
+        odom.header.frame_id = 'odom'
+        odom.child_frame_id = 'base_link'
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.orientation = self.yaw_to_quaternion(self.theta)
+        odom.twist.twist.linear.x = self.target_speed
+        self.odom_publisher.publish(odom)
+
+    def yaw_to_quaternion(self, yaw):
+
+        q = Quaternion()
+        q.x = 0.0
+        q.y = 0.0
+        q.z = math.sin(yaw / 2.0)
+        q.w = math.cos(yaw / 2.0)
+        return q
 
     def publish_scan(self) -> None:
         """Publishes last LIDAR scan."""
@@ -128,7 +191,7 @@ class TT02DriverNode(Node):
         # Champs LIDAR
         msg.angle_min = -self.lidar_fov / 2
         msg.angle_max = +self.lidar_fov / 2
-        msg.angle_increment = self.lidar_fov / self.lidar_nb_rays
+        msg.angle_increment = self.lidar_fov / (self.lidar_nb_rays -1)
         msg.range_min = self.lidar_range_min
         msg.range_max = self.lidar_range_max
 
@@ -151,6 +214,11 @@ class TT02DriverNode(Node):
 
         self.publisher.publish(msg)
     
+    def run(self):
+        while rclpy.ok():
+            self.update()
+            rclpy.spin_once(self, timeout_sec=0)
+
     @override
     def destroy_node(self) -> None:
         self.driver.close()
@@ -159,7 +227,12 @@ class TT02DriverNode(Node):
 def main(args=None):
     rclpy.init(args=args) 
     node = TT02DriverNode("simulation")
-    rclpy.spin(node)
+    #rclpy.spin(node)
+    try:
+        node.run()
+    except KeyboardInterrupt:
+        pass
+
     node.destroy_node()
     rclpy.shutdown()
 

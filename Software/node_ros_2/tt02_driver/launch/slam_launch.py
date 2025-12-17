@@ -1,0 +1,53 @@
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import ExecuteProcess
+import os
+from ament_index_python.packages import get_package_share_directory
+
+def generate_launch_description():
+    sim_time_arg = {'use_sim_time': True}
+
+    # 1. Driver Node
+    driver_node = Node(
+        package='tt02_driver',
+        executable='driver',
+        name='tt02_driver',
+        parameters=[{'target': 'simulation'}, sim_time_arg],
+        output='screen'
+    )
+
+    # 2. Pilot Node (Auto-pilot)
+    pilot_node = Node(
+        package='tt02_driver',
+        executable='pilot',
+        name='auto_pilot',
+        parameters=[sim_time_arg]
+    )
+
+    # 3. Static TF Publisher (Lien base_link -> RpLidarA2)
+    static_tf_node = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0.2', '0', '0.08', '0', '0', '0', 'base_link', 'RpLidarA2'],
+        parameters=[sim_time_arg]
+    )
+
+    # 4. Slam Toolbox Node
+    # On utilise le fichier de config mapper_params_online_async.yaml
+    config_dir = os.path.join(get_package_share_directory('tt02_driver'), 'config')
+    slam_config = os.path.join(config_dir, 'mapper_params_online_async.yaml')
+
+    slam_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        output='screen',
+        parameters=[slam_config, sim_time_arg]
+    )
+
+    return LaunchDescription([
+        driver_node,
+        pilot_node,
+        static_tf_node,
+        slam_node
+    ])

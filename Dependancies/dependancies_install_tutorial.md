@@ -49,6 +49,10 @@ Due to the project's reliance on the ROS 2 (Humble) and Webots ecosystems, sever
 | **`python-orocos-kdl`** | Python bindings for the Kinematics and Dynamics Library (KDL). | Conda (Robostack) or manual compilation. |
 | **`webots-ros2-driver`** | Bridge between ROS 2 and Webots simulation. | System Package Manager (`apt`/`dnf`) or Conda (Robostack). |
 
+```bash
+mamba install ros-humble-ackermann-msgs ros-humble-slam-toolbox ros-humble-nav2-map-server ros-humble-rviz2
+```
+
 ### Installation via Conda (Recommended for KDL & Webots Drivers)
 
 If you use Conda (with the Robostack channels configured), you can create your base environment and install these specialized packages before running `uv`:
