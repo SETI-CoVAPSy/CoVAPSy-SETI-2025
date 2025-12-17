@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'driver = tt02_driver.driver_node:main',
+            'pilot = tt02_driver.circuit_follower:main',
         ],
     },
 )
