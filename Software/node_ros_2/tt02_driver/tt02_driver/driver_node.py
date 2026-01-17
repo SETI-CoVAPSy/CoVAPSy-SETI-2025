@@ -14,6 +14,8 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped, Quaternion
 from rosgraph_msgs.msg import Clock
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
 
 
 #TF imports
@@ -52,6 +54,10 @@ class TT02DriverNode(Node):
         self.last_time = self.get_clock().now()
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.path_pub = self.create_publisher(Path, '/path', 10)
+
+        self.path_msg = Path()
+        self.path_msg.header.frame_id = 'odom'
 
         # === Common not initialized ===
         self.driver: GilbertDriverGeneric
@@ -179,6 +185,16 @@ class TT02DriverNode(Node):
         odom.pose.pose.orientation = self.yaw_to_quaternion(self.theta)
         odom.twist.twist.linear.x = self.target_speed
         self.odom_publisher.publish(odom)
+
+        # 3. Publisher Odometry Path
+        ps = PoseStamped()
+        ps.header.stamp = time.to_msg()
+        ps.header.frame_id = 'odom'
+        ps.pose = odom.pose.pose
+
+        self.path_msg.header.stamp = time.to_msg()
+        self.path_msg.poses.append(ps)
+        self.path_pub.publish(self.path_msg)
 
     def yaw_to_quaternion(self, yaw):
 
