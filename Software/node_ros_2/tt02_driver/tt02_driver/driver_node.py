@@ -13,6 +13,8 @@ from ackermann_msgs.msg import AckermannDrive
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped, Quaternion
+from rosgraph_msgs.msg import Clock
+
 
 #TF imports
 import tf2_ros
@@ -102,6 +104,8 @@ class TT02DriverNode(Node):
         self.webots_basicTimeStep = int(self.webots_driver.getBasicTimeStep())
         self.sensorTimeStep = 4 * self.webots_basicTimeStep
 
+        self.sim_time = self.webots_driver.getTime()
+
         self.webots_lidar: WebotsLidar = self.webots_driver.getDevice("RpLidarA2")
         self.webots_lidar.enable(self.sensorTimeStep)
 
@@ -109,6 +113,8 @@ class TT02DriverNode(Node):
         self.lidar_fov = self.webots_lidar.getFov()
         self.lidar_range_min = 0.05  # Minimum range in meters
         self.lidar_range_max = self.webots_lidar.getMaxRange()
+        
+        self.clock_pub = self.create_publisher(Clock, '/clock', 10) #sim clock publisher init
 
     def callback_command(self, msg: AckermannDrive) -> None:
         """Callback from command topic."""
@@ -150,6 +156,8 @@ class TT02DriverNode(Node):
         self.driver.set_steering_angle_deg(self.target_angle)
         self.publish_scan()
 
+        self.publish_clock()
+
     def publish_odometry(self, time):
         # 1. Broadcast Transform
         t = TransformStamped()
@@ -180,6 +188,16 @@ class TT02DriverNode(Node):
         q.z = math.sin(yaw / 2.0)
         q.w = math.cos(yaw / 2.0)
         return q
+
+
+    def publish_clock(self):
+        sim_time = self.webots_driver.getTime() 
+
+        clock_msg = Clock()
+        clock_msg.clock.sec = int(sim_time)
+        clock_msg.clock.nanosec = int((sim_time - int(sim_time)) * 1e9)
+
+        self.clock_pub.publish(clock_msg)
 
     def publish_scan(self) -> None:
         """Publishes last LIDAR scan."""

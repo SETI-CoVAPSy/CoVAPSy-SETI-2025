@@ -11,8 +11,8 @@ class CircuitFollower(Node):
         # ==========================================================
         # AUTONOMOUS PILOT PARAMETERS
         # ==========================================================
-        self.TARGET_SPEED     = 1.0   # Speed (m/s)
-        self.SLOW_SPEED       = 0.4   # speed when near obstacle
+        self.TARGET_SPEED     = 0.5  # Speed (m/s)
+        self.SLOW_SPEED       = 0.3   # speed when near obstacle
 
         self.FRONT_THRESHOLD  = 1.0   # Distance to slow down
 
@@ -35,7 +35,7 @@ class CircuitFollower(Node):
                           msg.range_max, ranges)
 
         # 2. Get indices for specific angles (+60° and -60°)
-        angle_target_rad = np.radians(60) # 1.047 rad
+        angle_target_rad = np.radians(15) # 1.047 rad
 
         # Calculate indices: index = (target_angle - min_angle) / increment
         idx_left  = int((angle_target_rad - msg.angle_min) / msg.angle_increment)
