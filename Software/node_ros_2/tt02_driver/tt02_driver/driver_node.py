@@ -55,6 +55,7 @@ class TT02DriverNode(Node):
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.path_pub = self.create_publisher(Path, '/path', 10)
+        self.k = 0.9
 
         self.path_msg = Path()
         self.path_msg.header.frame_id = 'odom'
@@ -119,6 +120,8 @@ class TT02DriverNode(Node):
         self.lidar_fov = self.webots_lidar.getFov()
         self.lidar_range_min = 0.05  # Minimum range in meters
         self.lidar_range_max = self.webots_lidar.getMaxRange()
+        self.angle_min = -math.pi
+        self.angle_max = math.pi
         
         self.clock_pub = self.create_publisher(Clock, '/clock', 10) #sim clock publisher init
 
@@ -131,9 +134,11 @@ class TT02DriverNode(Node):
         
     def update(self) -> None:
         """Clock update function called periodically."""
+        current_time = self.get_clock().now()
         if self._target == "hardware":
-            pass # Nothing to do yet
+            dt = (current_time - self.last_time).nanoseconds / 1e9
         elif self._target == "simulation":
+            dt = self.webots_basicTimeStep * 1e-3
             step_result = self.webots_driver.step()
 
             if step_result == -1:
@@ -142,8 +147,7 @@ class TT02DriverNode(Node):
                 rclpy.shutdown()
                 return
 
-        current_time = self.get_clock().now()
-        dt = (current_time - self.last_time).nanoseconds / 1e9
+        
 
         # --- Odometry Calculation (Dead Reckoning) ---
         v = self.target_speed
@@ -153,7 +157,7 @@ class TT02DriverNode(Node):
         # Ackermann kinematic model
         self.x += v * math.cos(self.theta) * dt
         self.y += v * math.sin(self.theta) * dt
-        self.theta += (v / L) * math.tan(alpha) * dt
+        self.theta += self.k * (v / L) * math.tan(alpha) * dt
 
         self.publish_odometry(current_time)
         self.last_time = current_time
@@ -218,24 +222,26 @@ class TT02DriverNode(Node):
     def publish_scan(self) -> None:
         """Publishes last LIDAR scan."""
         # Création du message
-        msg = LaserScan()
+        msg = LaserScan()   
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "RpLidarA2"
 
         # Champs LIDAR
-        msg.angle_min = -self.lidar_fov / 2
-        msg.angle_max = +self.lidar_fov / 2
-        msg.angle_increment = self.lidar_fov / (self.lidar_nb_rays -1)
+        msg.angle_min = self.angle_min
+        msg.angle_max = self.angle_max
         msg.range_min = self.lidar_range_min
         msg.range_max = self.lidar_range_max
 
         # Ranges
         if self._target == "simulation":
-            raw = self.webots_lidar.getRangeImage()
-            msg.ranges = [ # Copie des valeurs
-                (d if (0 <= d < msg.range_max) else float("inf"))
+            raw = list(self.webots_lidar.getRangeImage())
+            N = len(raw)
+            msg.angle_increment = (msg.angle_max - msg.angle_min) / (N - 1)
+            msg.ranges = [
+                (d if (msg.range_min <= d <= msg.range_max) else float("inf"))
                 for d in raw
             ]
+
         elif self._target == "hardware":
             lidar_scan = next(self.hw_lidar_iterator)
             for i in range(len(lidar_scan)):

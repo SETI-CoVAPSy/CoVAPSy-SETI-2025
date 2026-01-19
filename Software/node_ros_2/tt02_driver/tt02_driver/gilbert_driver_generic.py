@@ -2,7 +2,11 @@
 Generic driver for the Gilbert car (speed and steering angle control), defined the base class.
 """
 
-from typing import Self
+try:
+    from typing import Self  # py >= 3.11
+except ImportError:
+    from typing import TypeVar
+    Self = TypeVar("Self")
 from types import TracebackType
 from abc import ABC, abstractmethod
 
