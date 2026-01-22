@@ -27,4 +27,4 @@ This main repository links to sub repositories:
 
 ## Install the docker environment
 
-This project is designed to be used with Docker. Please refer to the [Docker installation instructions](./devcontainer/README.md) to set up the development container.
+This project is designed to be used with Docker. Please refer to the [Docker installation instructions](./.devcontainer/README.md) to set up the development container.
