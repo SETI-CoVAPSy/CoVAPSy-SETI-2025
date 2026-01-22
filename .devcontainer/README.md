@@ -32,6 +32,7 @@ Ideally, use VS Code with the [`Dev Containers`]([https://marketplace.visualstud
 - Install the `Dev Containers` extension in VS Code.
 - Open the project folder in VS Code on host.
 - A prompt should appear to reopen the folder in the container. Please accept it.
+<img width="684" height="165" alt="Screenshot_20260122_233349" src="https://github.com/user-attachments/assets/f9a61406-0582-4010-8845-b680db67e710" />
 
 When the container is being opened for the first time, it will build the Docker image as per the `Dockerfile` defined in the `.devcontainer` folder. One may show the logs during the build process.
 
