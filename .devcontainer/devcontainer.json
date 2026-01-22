@@ -1,0 +1,36 @@
+{
+  "name": "CoVAPSy-SETI-2025 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "privileged": true,
+  "remoteUser": "ros",
+
+  // 1. STANDARD WORKSPACE (Keeps VS Code Happy)
+  // We mount the project to the standard location so VS Code never loses track of files.
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/CoVAPSy-SETI-2025,type=bind",
+  "workspaceFolder": "/workspaces/CoVAPSy-SETI-2025",
+
+  "runArgs": [
+    "--network=host",
+    "--ipc=host",
+    // Display / GUI Support
+    "--env=DISPLAY=${localEnv:DISPLAY}",
+    "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+    "--volume=${localEnv:HOME}/.Xauthority:/home/ros/.Xauthority:rw"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-iot.vscode-ros",
+        "ms-vscode.cpptools",
+        "eamodio.gitlens"
+      ]
+    }
+  },
+
+  // 2. Workspace setup
+  "postCreateCommand": "bash .devcontainer/setup_ros.sh"
+}

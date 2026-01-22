@@ -1,12 +1,15 @@
-#!/usr/bin/env python3
+"""
+Base ROS 2 driver node for TT-02 in Webots/Simulation or Hardware.
+"""
 
+import math
 import rclpy
 import numpy as np
+from rclpy.time import Time
 from rclpy.node import Node
 from controller import Lidar as WebotsLidar
 from typing import Literal
 from typing_extensions import override
-import math
 
 # ROS 2 Message imports
 from ackermann_msgs.msg import AckermannDrive
@@ -148,7 +151,6 @@ class TT02DriverNode(Node):
                 return
 
         
-
         # --- Odometry Calculation (Dead Reckoning) ---
         v = self.target_speed
         alpha = self.target_angle * math.pi / 180.0
@@ -168,7 +170,7 @@ class TT02DriverNode(Node):
 
         self.publish_clock()
 
-    def publish_odometry(self, time):
+    def publish_odometry(self, time: Time) -> None:
         # 1. Broadcast Transform
         t = TransformStamped()
         t.header.stamp = time.to_msg()
@@ -200,7 +202,7 @@ class TT02DriverNode(Node):
         self.path_msg.poses.append(ps)
         self.path_pub.publish(self.path_msg)
 
-    def yaw_to_quaternion(self, yaw):
+    def yaw_to_quaternion(self, yaw: float) -> Quaternion:
 
         q = Quaternion()
         q.x = 0.0
@@ -210,7 +212,7 @@ class TT02DriverNode(Node):
         return q
 
 
-    def publish_clock(self):
+    def publish_clock(self) -> None:
         sim_time = self.webots_driver.getTime() 
 
         clock_msg = Clock()
@@ -264,7 +266,7 @@ class TT02DriverNode(Node):
         self.driver.close()
         super().destroy_node()
 
-def main(args=None):
+def main(args: list[str] | None = None):
     rclpy.init(args=args) 
     node = TT02DriverNode("simulation")
     #rclpy.spin(node)
