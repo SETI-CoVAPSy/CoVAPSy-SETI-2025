@@ -73,7 +73,7 @@ class CircuitFollower(Node):
         # ==========================================================
 
         # Apply steering
-        drive_msg.steering_angle = steering
+        drive_msg.steering_angle = float(steering)
 
         # Inversion check
         if self.INVERT_STEERING:

@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile"
   },
   "privileged": true,
-  "remoteUser": "root",
+  "remoteUser": "ros",
 
   // 1. STANDARD WORKSPACE (Keeps VS Code Happy)
   // We mount the project to the standard location so VS Code never loses track of files.
@@ -17,7 +17,7 @@
     // Display / GUI Support
     "--env=DISPLAY=${localEnv:DISPLAY}",
     "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
-    "--volume=${localEnv:HOME}/.Xauthority:/root/.Xauthority:rw"
+    "--volume=${localEnv:HOME}/.Xauthority:/home/ros/.Xauthority:rw"
   ],
 
   "customizations": {

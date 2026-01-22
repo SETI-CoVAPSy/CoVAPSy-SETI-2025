@@ -11,7 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
@@ -29,6 +29,8 @@ setup(
         'console_scripts': [
             'driver = tt02_driver.driver_node:main',
             'pilot = tt02_driver.circuit_follower:main',
+            'rl1_env = tt02_driver.rl1_env:main',
+            'rl1_agent = tt02_driver.rl1_agent:main',
         ],
     },
 )
