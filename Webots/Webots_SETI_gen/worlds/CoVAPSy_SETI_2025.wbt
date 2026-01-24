@@ -1,0 +1,62 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "../protos/TT02_2023b.proto"
+
+WorldInfo {
+}
+Viewpoint {
+orientation 0.12211914254374193 0.9924355801997995 0.012591035615417414 1.2862324557511495
+position -5.091828132419467 -1.7430284565794696 12.438341492891277
+followType "Mounted Shot"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+TT02_2023b {
+  name "CoVAPSy_Car_1"
+  controller "<extern>"
+  color 1.0 0.0 0.0
+  translation 0.0 -1.0 0
+  rotation 0.0 0.0 1.0 0.0
+}
+TT02_2023b {
+  name "CoVAPSy_Car_2"
+  controller "<extern>"
+  color 0.0 0.0 1.0
+  translation 0.0 1.0 0
+  rotation 0.0 0.0 1.0 0.0
+}
+TT02_2023b {
+  name "CoVAPSy_Car_3"
+  controller "<extern>"
+  color 0.0 1.0 0.0
+  translation -1.0 0.0 0
+  rotation 0.0 0.0 1.0 0.0
+}
+Solid {
+  translation 0.0 0.5 -0.1
+  children [
+    Shape {
+      appearance PBRAppearance {
+      }
+      geometry Box {
+        size 20.0 20.0 0.1
+      }
+    }
+  ]
+  name "Ground_Floor"
+  boundingObject Shape {
+    geometry Box {
+      size 20.0 20.0 0.1
+    }
+  }
+}
+
+Group {
+  children [
+
+  ]
+}
