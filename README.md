@@ -14,7 +14,7 @@ git clone --recurse-submodules https://github.com/SETI-CoVAPSy/CoVAPSy-SETI-2025
 
 This repository contains several main folders:
 - [`Software/`](Software/): Code for the car
-- [`Webots/`](Webots/): Webots simulation files (worlds, based on CoVAPSy's webot worlds)
+- [`Webots/`](Webots/): Webots-related files, worlds and track generator (see [./Webots/README.md](./Webots/README.md) for more details)
 
 Some additional bash scripts are provided at the root of this repository:
 - `webots_start.sh`: Script to launch Webots with the CoVAPSy SETI 2025 world.
