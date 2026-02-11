@@ -177,11 +177,15 @@ class World(ComponentBase):
     """Webots world generator class."""
     world_path: str
     components: list[ComponentBase] = field(default_factory=list)
+    viewpoint_arg: str = '''
+orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
+position 6.158656608120317 -5.250076751623688 46.317718817228396
+followType "Mounted Shot"'''
 
     @override
     def get_string(self, indent: str = '  ') -> str:
         """Get string representation."""
-        prefix = '''#VRML_SIM R2025a utf8
+        prefix = ('''#VRML_SIM R2025a utf8
 
         EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackground.proto"
         EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
@@ -190,15 +194,14 @@ class World(ComponentBase):
         WorldInfo {
         }
         Viewpoint {
-        orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
-        position 6.158656608120317 -5.250076751623688 46.317718817228396
-        followType "Mounted Shot"
+        ''' + self.viewpoint_arg.lstrip('\n') +
+        '''
         }
         TexturedBackground {
         }
         TexturedBackgroundLight {
         }
-        '''.replace('        ', '')
+        ''').replace('        ', '')
         suffix = ''
 
         components_str = '\n'.join(component.get_string(indent=indent) for component in self.components)

@@ -12,3 +12,4 @@ colcon build --symlink-install
 source install/setup.bash
 
 echo "ros2_ws built and sourced successfully."
+cd -

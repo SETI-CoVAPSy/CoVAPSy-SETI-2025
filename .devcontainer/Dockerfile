@@ -59,6 +59,7 @@ RUN pip3 install \
 # RUN pip3 install
 RUN apt update \
     && apt install -y ros-humble-slam-toolbox
+RUN apt install -y nano
 
 # =========================================================================
 #  Create Non-Root User
@@ -74,16 +75,29 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # =========================================================================
-# Final Setup
+# bashrc configuration
 # =========================================================================
 # Add ROS 2 to the bashrc for both root and ros user
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
     && echo "source /opt/ros/humble/setup.bash" >> /home/$USERNAME/.bashrc \
     && echo "export WEBOTS_HOME=/usr/local/webots" >> /home/$USERNAME/.bashrc
+# Show git branch in terminal
+RUN echo 'parse_git_branch() {' >> /home/$USERNAME/.bashrc \
+ && echo '    git branch 2> /dev/null | sed -e '\''/^[^*]/d'\'' -e '\''s/* \(.*\)/ (\\1)/'\''' >> /home/$USERNAME/.bashrc \
+ && echo '}' >> /home/$USERNAME/.bashrc \
+ && echo 'export PS1="\u@\h \[\033[32m\]\w\[\033[33m\]\$(parse_git_branch)\[\033[00m\] $ "' >> /home/$USERNAME/.bashrc
 
+
+# =========================================================================
+# Final setup
+# =========================================================================
 # Switch to non-root user
 USER $USERNAME
 RUN echo "export USER=$USERNAME" >> /home/$USERNAME/.bashrc
+
+# Ignore dubious ownership
+RUN git config --global --add safe.directory /workspaces/CoVAPSy-SETI-2025
+
 
 # Set the default shell to bash
 SHELL ["/bin/bash", "-c"]
