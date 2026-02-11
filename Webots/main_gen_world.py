@@ -22,10 +22,10 @@ from lib_webots_world import (
 # =============================================
 #  User parameters
 # =============================================
-MAP_WIDTH = 90  # in track units
-MAP_HEIGHT = 65  # in track units
+MAP_WIDTH = 30  # in track units
+MAP_HEIGHT = 50  # in track units
 TRACK_MARGIN = min(MAP_WIDTH, MAP_HEIGHT) // 5  # in track units
-TRACK_SCALE = 3  # in meters, should be above 2.0
+TRACK_SCALE = 2.0  # in meters, should be above 2.0
 TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 5
 
 PATH_WORLD = Path(__file__).parent / "Webots_SETI_gen" / "worlds"
@@ -36,7 +36,7 @@ PATH_TEST_TRACK_IMAGE = (
 )  # Track template to import from
 
 DO_TEST_TRACK = False  # If True, load track from test image instead of generating it
-
+DO_FOLLOW = True # If True, viewpoint follow
 
 class GridTrackStraight(ComponentBase):
     """Straight track component."""
@@ -765,7 +765,16 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"World parent path not found: {PATH_WORLD}")
 
     # ==== World definition ====
-    world = World(world_path=str(PATH_WBT))
+    world: World
+    if DO_FOLLOW:
+        world = World(world_path=str(PATH_WBT), viewpoint_arg='''
+orientation 0.03640700220421551 0.9991312226414955 0.02028127543850064 0.8419091720971831
+position -8.000572994132117 5.9031970370616955 4.907303571483722
+follow "CoVAPSy_Car_1"
+followType "Mounted Shot"''')
+
+    else:
+        world = World(world_path=str(PATH_WBT))
 
     # ==== Track ====
     if not DO_TEST_TRACK:

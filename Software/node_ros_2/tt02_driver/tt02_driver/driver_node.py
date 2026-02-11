@@ -40,7 +40,7 @@ class TT02DriverNode(Node):
             self, 
             target: Literal["hardware", "simulation"],
             node_name: str = "tt02_driver",
-            verbose: bool = True
+            verbose: bool = False
         ) -> None:
         # === Common initialization ===
         super().__init__(node_name)
