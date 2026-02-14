@@ -16,6 +16,9 @@ from vehicle import Driver as WebotsDriver
 from typing import Literal
 from typing_extensions import override
 from .gilbert_driver_generic import GilbertDriverGeneric
+import numpy as np
+from numpy.typing import NDArray
+from numpy import uint8
 
 class GilbertDriverWebots(GilbertDriverGeneric):
     """Driver for the Gilbert car."""
@@ -29,14 +32,22 @@ class GilbertDriverWebots(GilbertDriverGeneric):
     SPEED_LIMIT_REVERSE: float = -8.0  # Reverse speed limit (m/s)
     ANGLE_LIMIT_DEG: float = 18.0  # Maximum steering angle (degrees)
 
+    CAMERA_FOV_DEG: float = 120.0 # FoV of the camera (degrees)
+
     def __init__(
         self,
+        use_camera: bool = False,
+        auto_open: bool = True,
         verbose: bool = False,
-        auto_open: bool = True
+        camera_name: str = "camera_gilbert",
     ) -> None:
         """Driver for the Gilbert car (software).
 
         Args:
+            use_camera (bool): Whether to use the camera. Defaults to False.
+            auto_open (bool): Whether to automatically open the connection and start camera on initialization. Defaults to True.
+            verbose (bool): Whether to print debug information. Defaults to False.
+            camera_name (str): Name of the camera in Webots. Defaults to "camera".
         
         Note: auto_open is True by default for convenience, but using a context manager (with ... as ..:) is recommended to ensure correct opening and closing of the serial connection.
         """
@@ -48,6 +59,10 @@ class GilbertDriverWebots(GilbertDriverGeneric):
         self.speed_mps = 0.0  # Current speed (m/s)
         self.angle_deg = 0.0  # Current steering angle (degrees)
 
+        self._use_camera = use_camera
+        self._camera_name = camera_name
+        self.camera = None
+
         if auto_open:
             self.open()
 
@@ -55,10 +70,16 @@ class GilbertDriverWebots(GilbertDriverGeneric):
     def open(self) -> None:
         """Open relevant connections."""
         self._driver = WebotsDriver()
+        if self._use_camera:
+            from controller import Camera
+            self.camera = Camera(self._camera_name)
+            self.camera.enable(int(round(self._driver.getBasicTimeStep())))
 
     @override
     def close(self) -> None:
         """Close the relevant connection."""
+        if self.camera:
+            self.camera.disable()
         del self._driver
         self._driver = None
 
@@ -78,3 +99,11 @@ class GilbertDriverWebots(GilbertDriverGeneric):
         if self._driver is None:
             raise RuntimeError("Driver not opened. Call open() before getting the driver.")
         return self._driver
+
+    @override
+    def get_camera_frame(self) -> None | NDArray[uint8]:
+        """Capture a frame from the camera (if enabled)."""
+        if not self.camera:
+            return None
+        
+        return np.array(self.camera.getImageArray(), dtype=np.uint8)

@@ -2,13 +2,11 @@
 Generic driver for the Gilbert car (speed and steering angle control), defined the base class.
 """
 
-try:
-    from typing import Self  # py >= 3.11
-except ImportError:
-    from typing import TypeVar
-    Self = TypeVar("Self")
+from typing_extensions import Self
 from types import TracebackType
 from abc import ABC, abstractmethod
+from numpy.typing import NDArray
+from numpy import uint8
 
 class GilbertDriverGeneric(ABC):
     """Generic driver for the Gilbert car."""
@@ -17,6 +15,8 @@ class GilbertDriverGeneric(ABC):
     SPEED_LIMIT_FORWARD: float = 2.0  # Speed limit for our application (m/s)
     SPEED_LIMIT_REVERSE: float = -8.0  # Reverse speed limit (m/s)
     ANGLE_LIMIT_DEG: float = 4.0  # Maximum steering angle (degrees)
+
+    CAMERA_FOV_DEG: float = 120.0 # FoV of the camera (degrees)
 
     def duty_cycle_to_us(self, duty_cycle):
         """Convert duty cycle [0.0-100.0] to corresponding duration in µs."""
@@ -95,4 +95,9 @@ class GilbertDriverGeneric(ABC):
     @abstractmethod
     def send_command(self) -> None:
         """Send set speed and angle of the car. Will use internal state."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_camera_frame(self) -> None | NDArray[uint8]:
+        """Capture a frame from the camera (if enabled)."""
         raise NotImplementedError()

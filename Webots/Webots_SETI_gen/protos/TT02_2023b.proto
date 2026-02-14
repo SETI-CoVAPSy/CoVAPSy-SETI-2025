@@ -19,6 +19,7 @@ PROTO TT02_2023b [
   field SFFloat    lidarNoise_OverMaxRange   0.000833      # Is `Lidar.noise`.
   field SFFloat    lidarResolution           0.01          # Is `Lidar.resolution`.
   field SFFloat    lidarDefaultFrequency     12            # Is `Lidar.defaultFrequency`.
+  field MFNode     children         []
 ]
 {
   Car {
@@ -210,6 +211,9 @@ PROTO TT02_2023b [
             castShadows FALSE
           }
         ]
+      }
+      Group {
+        children IS children
       }
     ]
     boundingObject Group {

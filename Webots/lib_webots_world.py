@@ -84,6 +84,7 @@ class CoVAPSyCar(ComponentBase):
     proto_name: str = 'TT02_2023b'
     translation: tuple[float, float, float] = (0.0, 0.0, 0.0)          # x, y, z in meters
     rotation: tuple[float, float, float, float] = (0.0, 0.0, 1.0, 0.0) # axis x, y, z and angle in radians
+    camera_name: None | str = "camera_gilbert" # None if no camera, otherwise name of the camera device
 
     @override
     def get_string(self, indent: str = '  ') -> str:
@@ -95,6 +96,32 @@ class CoVAPSyCar(ComponentBase):
         content += f'{indent}color {self.color[0]} {self.color[1]} {self.color[2]}\n'
         content += f'{indent}translation {self.translation[0]} {self.translation[1]} {self.translation[2]}\n'
         content += f'{indent}rotation {self.rotation[0]} {self.rotation[1]} {self.rotation[2]} {self.rotation[3]}\n'
+
+        # Camera
+        if self.camera_name:
+            content += f'{indent}children ' + '[\n'
+            content += f'{indent*2}Solid ' + '{\n'
+            content += f'{indent*3}translation 0.16 0 0.11' + '\n'
+            content += f'{indent*3}rotation 0 0 1 0' + '\n'
+            content += f'{indent*3}children [' + '\n'
+            content += f'{indent*4}Shape ' + '{\n'
+            content += f'{indent*5}appearance PBRAppearance ' + '{\n'
+            content += f'{indent*6}baseColor 1.0 1.0 1.0' + '\n'
+            content += f'{indent*6}metalness 0' + '\n'
+            content += f'{indent*5}' + '}\n'
+            content += f'{indent*5}geometry Box ' + '{\n'
+            content += f'{indent*6}size 0.01 0.05 0.05' + '\n'
+            content += f'{indent*5}' + '}\n'
+            content += f'{indent*4}' + '}\n'
+            content += f'{indent*4}Camera ' + '{\n'
+            content += f'{indent*5}name "{self.camera_name}"\n'
+            content += f'{indent*5}width 200\n'
+            content += f'{indent*5}height 30\n'
+            content += f'{indent*4}' + '}\n'
+            content += f'{indent*3}' + ']\n'
+            content += f'{indent*2}' + '}\n'
+            content += f'{indent}]' + '\n'
+        
         return prefix + content + suffix
 
 @dataclass
@@ -207,52 +234,3 @@ followType "Mounted Shot"'''
         components_str = '\n'.join(component.get_string(indent=indent) for component in self.components)
 
         return prefix + components_str + '\n' + suffix
-    
-if __name__ == '__main__':
-    from pathlib import Path
-    world_path = Path(__file__).parent / 'Webots_SETI_gen' / 'worlds' / 'CoVAPSy_SETI_2025.wbt'
-    if not world_path.parent.exists():
-        raise FileNotFoundError(f'World path not found: {world_path.parent}')
-
-    # ==== World definition ====
-    world_gen = World(world_path=str(world_path))
-    car1 = CoVAPSyCar(
-        name='CoVAPSy_Car_1',
-        controller='<extern>',
-        color=(1.0, 0.0, 0.0),  # Red
-        translation=(0.0, -1.0, 0)
-    )
-    world_gen.components.append(car1)
-    car2 = CoVAPSyCar(
-        name='CoVAPSy_Car_2',
-        controller='<extern>',
-        color=(0.0, 0.0, 1.0),  # Blue
-        translation=(0.0, 1.0, 0)
-    )
-    world_gen.components.append(car2)
-    car3 = CoVAPSyCar(
-        name='CoVAPSy_Car_3',
-        controller='<extern>',
-        color=(0.0, 1.0, 0.0),  # Green
-        translation=(-1.0, 0.0, 0)
-    )
-    world_gen.components.append(car3)
-
-    floor = Floor(
-        name='Ground_Floor',
-        size=(20.0, 20.0)
-    )
-    world_gen.components.append(floor)
-
-    group1 = ComponentGroup(
-        children=[],
-    )
-    world_gen.components.append(group1)
-
-    # ==== Saving world ====
-    world_str = world_gen.get_string()
-    with open(world_path, 'w', encoding='utf-8') as f:
-        f.write(world_str)
-
-
-    print(f'World file generated at: {world_path}')

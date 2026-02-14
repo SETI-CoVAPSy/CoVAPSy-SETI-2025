@@ -56,7 +56,10 @@ RUN pip3 install \
 # =========================================================================
 #  Python Other Libraries / Packages
 # =========================================================================
-# RUN pip3 install
+RUN pip3 install \
+    pyserial \
+    rplidar \
+    picamera2
 RUN apt update \
     && apt install -y ros-humble-slam-toolbox
 RUN apt install -y nano
