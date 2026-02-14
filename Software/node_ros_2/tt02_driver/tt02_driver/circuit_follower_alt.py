@@ -55,12 +55,10 @@ class CircuitFollower(Node):
         # self.get_logger().info(f"Ranges: m30:{range_m30:.2f} 0:{range_0:.2f} p30:{range_p30:.2f}")
         
         # Mean, ignoring invalid values, default to max range if all invalid
-        mean_p = np.mean([r for r in [range_p30, range_p15] if np.isfinite(r)])
-        mean_m = np.mean([r for r in [range_m30, range_m15] if np.isfinite(r)])
-        if not np.isfinite(mean_p):
-            mean_p = msg.range_max
-        if not np.isfinite(mean_m):
-            mean_m = msg.range_max
+        vals_p = [r for r in [range_p30, range_p15] if np.isfinite(r)]
+        mean_p = np.mean(vals_p) if vals_p else msg.range_max
+        vals_m = [r for r in [range_m30, range_m15] if np.isfinite(r)]
+        mean_m = np.mean(vals_m) if vals_m else msg.range_max
         
         # Steering
         if range_0 < mean_p or range_0 < mean_m: # Agressive steering
@@ -74,7 +72,8 @@ class CircuitFollower(Node):
         drive_msg.steering_angle = np.clip(drive_msg.steering_angle, -self.MAX_STEER, self.MAX_STEER)
 
         # Speed Control
-        front_distance = np.mean([r for r in [range_m15, range_0, range_p15] if np.isfinite(r)])
+        front_vals = [r for r in [range_m15, range_0, range_p15] if np.isfinite(r)]
+        front_distance = np.mean(front_vals) if front_vals else msg.range_max
         drive_msg.speed = np.clip(front_distance**1.5 * self.KP, self.SLOW_SPEED*2, self.TARGET_SPEED)
         self.publisher_.publish(drive_msg)
     

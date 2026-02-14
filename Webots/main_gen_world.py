@@ -22,8 +22,8 @@ from lib_webots_world import (
 # =============================================
 #  User parameters
 # =============================================
-MAP_WIDTH = 30  # in track units
-MAP_HEIGHT = 50  # in track units
+MAP_WIDTH = 3  # in track units
+MAP_HEIGHT = 5  # in track units
 TRACK_MARGIN = min(MAP_WIDTH, MAP_HEIGHT) // 5  # in track units
 TRACK_SCALE = 2.0  # in meters, should be above 2.0
 TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 5
@@ -36,7 +36,7 @@ PATH_TEST_TRACK_IMAGE = (
 )  # Track template to import from
 
 DO_TEST_TRACK = False  # If True, load track from test image instead of generating it
-DO_FOLLOW = True # If True, viewpoint follow
+DO_FOLLOW = False # If True, viewpoint follow
 
 class GridTrackStraight(ComponentBase):
     """Straight track component."""

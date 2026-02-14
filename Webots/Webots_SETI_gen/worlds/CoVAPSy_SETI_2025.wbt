@@ -7,9 +7,9 @@ EXTERNPROTO "../protos/TT02_2023b.proto"
 WorldInfo {
 }
 Viewpoint {
-    orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
-    position 6.158656608120317 -5.250076751623688 46.317718817228396
-    followType "Mounted Shot"
+orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
+position 6.158656608120317 -5.250076751623688 46.317718817228396
+followType "Mounted Shot"
 }
 TexturedBackground {
 }
@@ -21,21 +21,54 @@ TT02_2023b {
   color 1.0 0.0 0.0
   translation 0.0 -1.0 0
   rotation 0.0 0.0 1.0 0.0
-}
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1.0 0.0 0.0
+        metalness 0
+      }
+      geometry Box {
+        size 1 1 2
+      }
+    }
+  ]
+"}
 TT02_2023b {
   name "CoVAPSy_Car_2"
   controller "<extern>"
   color 0.0 0.0 1.0
   translation 0.0 1.0 0
   rotation 0.0 0.0 1.0 0.0
-}
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.0 0.0 1.0
+        metalness 0
+      }
+      geometry Box {
+        size 1 1 2
+      }
+    }
+  ]
+"}
 TT02_2023b {
   name "CoVAPSy_Car_3"
   controller "<extern>"
   color 0.0 1.0 0.0
   translation -1.0 0.0 0
   rotation 0.0 0.0 1.0 0.0
-}
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.0 1.0 0.0
+        metalness 0
+      }
+      geometry Box {
+        size 1 1 2
+      }
+    }
+  ]
+"}
 Solid {
   translation 0.0 0.5 -0.1
   children [

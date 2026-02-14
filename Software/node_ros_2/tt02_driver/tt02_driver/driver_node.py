@@ -40,6 +40,7 @@ class TT02DriverNode(Node):
             self, 
             target: Literal["hardware", "simulation"],
             node_name: str = "tt02_driver",
+            use_camera: bool = False,
             verbose: bool = False
         ) -> None:
         # === Common initialization ===
@@ -72,9 +73,9 @@ class TT02DriverNode(Node):
 
         # === Initialization specific ===
         if target == "hardware":
-            self._init_hardware()
+            self._init_hardware(use_camera)
         elif target == "simulation":
-            self._init_simulation()
+            self._init_simulation(use_camera)
         else:
             raise ValueError(f"Unknown target '{target}'")
         
@@ -90,14 +91,15 @@ class TT02DriverNode(Node):
         #self.timer = self.create_timer(0.02, self.update)
         self.get_logger().info("TT02 driver started.")
 
-    def _init_hardware(self) -> None:
+    def _init_hardware(self, use_camera: bool) -> None:
         from rplidar import RPLidar
         from tt02_driver.gilbert_driver_hardware import GilbertDriverHardware
 
         self.driver = GilbertDriverHardware(
             serial_port=self.HW_SERIAL_PORT,
             serial_baud=self.HW_SERIAL_BAUDRATE,
-            verbose=self.verbose
+            verbose=self.verbose,
+            use_camera=use_camera
         )
         
         self.hw_lidar = RPLidar(self.HW_LIDAR_PORT,baudrate=self.HW_LIDAR_BAUDRATE)
@@ -106,9 +108,12 @@ class TT02DriverNode(Node):
         self.hw_lidar_iterator = self.hw_lidar.iter_scans(scan_type='express')
         self.hw_lidar_buffer = np.zeros(360) # Buffer à remplir
     
-    def _init_simulation(self) -> None:
+    def _init_simulation(self, use_camera: bool) -> None:
         from tt02_driver.gilbert_driver_webots import GilbertDriverWebots
-        self.driver = GilbertDriverWebots(verbose=self.verbose)
+        self.driver = GilbertDriverWebots(
+            verbose=self.verbose, 
+            use_camera=use_camera
+        )
 
         self.webots_driver = self.driver.get_driver()
         self.webots_basicTimeStep = int(self.webots_driver.getBasicTimeStep())
@@ -268,7 +273,7 @@ class TT02DriverNode(Node):
 
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
-    node = TT02DriverNode("simulation")
+    node = TT02DriverNode("simulation", use_camera=True)
     #rclpy.spin(node)
     try:
         node.run()
