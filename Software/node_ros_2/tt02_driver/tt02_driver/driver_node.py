@@ -135,6 +135,7 @@ class TT02DriverNode(Node):
 
     def callback_command(self, msg: AckermannDrive) -> None:
         """Callback from command topic."""
+        return
         self.target_speed = msg.speed
         self.target_angle = msg.steering_angle * 180.0 / 3.14159265358979
         self.target_speed = max(self.driver.SPEED_LIMIT_REVERSE, min(self.driver.SPEED_LIMIT_FORWARD, self.target_speed))
@@ -273,15 +274,49 @@ class TT02DriverNode(Node):
 
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
-    node = TT02DriverNode("simulation", use_camera=True)
+    node = TT02DriverNode(
+        "simulation", 
+        use_camera=True
+    )
     #rclpy.spin(node)
     try:
+        # Schedule camera capture in delay s in parallel
+        from PIL import Image
+        from pathlib import Path
+        delay = 1
+        import threading
+        def capture_camera():
+            import time
+            time.sleep(delay)
+            frame = node.driver.get_camera_frame()
+            # Save the frame as an image file
+            img = Image.fromarray(frame)
+            file_path = Path(__file__).parent / "camera_capture.png"
+            img.save(file_path)
+            node.get_logger().info(f"Camera frame captured and saved as {file_path}")
+
+        thread = threading.Thread(target=capture_camera)
+        thread.start()
+
+        # Schedule a lidar dump in delay s in parallel
+        def dump_lidar():
+            import time
+            time.sleep(delay)
+            scan = node.webots_lidar.getRangeImage()
+            # Save the scan as a text file
+            file_path = Path(__file__).parent / "lidar_scan.txt"
+            np.savetxt(file_path, scan, fmt="%.3f")
+            node.get_logger().info(f"LIDAR scan captured and saved as {file_path}")
+
+        thread = threading.Thread(target=dump_lidar)
+        thread.start()
+
         node.run()
     except KeyboardInterrupt:
         pass
-
-    node.destroy_node()
-    rclpy.shutdown()
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

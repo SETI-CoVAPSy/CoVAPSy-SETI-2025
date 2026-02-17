@@ -819,7 +819,7 @@ followType "Mounted Shot"''')
     car1 = CoVAPSyCar(
         name="CoVAPSy_Car_1",
         controller="<extern>",
-        color=(1.0, 0.0, 0.0),  # Red
+        color=(1.0, 1.0, 0.0),  # Yellow
         translation=(
             (start_pos[1] - width / 2) * TRACK_SCALE + 0.6,
             (-start_pos[0] + height / 2) * TRACK_SCALE,
@@ -828,6 +828,30 @@ followType "Mounted Shot"''')
         # translation=(0.0, -1.0, 0),
     )
     world.components.append(car1)
+
+    car2 = CoVAPSyCar(
+        name="Enemy_Car_1",
+        controller="<none>",
+        color=(0.0, 0.0, 1.0),  # Blue
+        translation=(
+            (start_pos[1] - width / 2) * TRACK_SCALE,
+            (-start_pos[0] + height / 2) * TRACK_SCALE - 0.3,
+            0,
+        ),
+    )
+    world.components.append(car2)
+
+    car3 = CoVAPSyCar(
+        name="Enemy_Car_2",
+        controller="<none>",
+        color=(1.0, 0.0, 1.0),  # Magenta
+        translation=(
+            (start_pos[1] - width / 2) * TRACK_SCALE,
+            (-start_pos[0] + height / 2) * TRACK_SCALE + 0.3,
+            0,
+        ),
+    )
+    world.components.append(car3)
 
     # Finish line
     finish_line = GridFinishLine(

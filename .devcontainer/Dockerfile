@@ -60,6 +60,8 @@ RUN pip3 install \
     pyserial \
     rplidar \
     picamera2
+RUN pip3 install \
+    scikit-learn
 RUN apt update \
     && apt install -y ros-humble-slam-toolbox
 RUN apt install -y nano

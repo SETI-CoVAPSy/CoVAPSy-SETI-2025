@@ -7,28 +7,42 @@ EXTERNPROTO "../protos/TT02_2023b.proto"
 WorldInfo {
 }
 Viewpoint {
-orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
-position 6.158656608120317 -5.250076751623688 46.317718817228396
-followType "Mounted Shot"
+  orientation -0.010587923938922104 0.9814943264485121 0.1911982819380054 1.2940196434713749
+  position -3.4104175491718975 0.9504163392170778 8.093043750718085
+  followType "Mounted Shot"
 }
 TexturedBackground {
 }
 TexturedBackgroundLight {
 }
 TT02_2023b {
+  hidden position_0_0 -1.2024739698596017e-16
+  hidden position2_0_0 1.50020608693738e-11
+  hidden position_0_1 1.2071353554762191e-16
+  hidden position2_0_1 1.4994464252847225e-11
+  hidden position_0_2 -1.5145900223848834e-11
+  hidden position_0_3 -1.5151252036864538e-11
+  hidden linearVelocity_0 2.4177713586855854e-15 -4.130582992688804e-15 -8.983550985508971e-17
+  hidden angularVelocity_0 -2.8933624739037675e-16 -1.7754400400556688e-15 -2.9374137380237333e-15
+  hidden linearVelocity_1 2.6583431008654683e-15 -3.326500568276915e-16 -5.929412188049795e-16
+  hidden angularVelocity_1 -1.9691411817706053e-14 1.3008989840511182e-14 -2.9491812274194527e-15
+  hidden linearVelocity_2 2.636818809096835e-15 -3.3935909968936225e-15 1.0292748728421e-16
+  hidden angularVelocity_2 -5.045369456082618e-15 -6.240652610401793e-17 -2.947089882070241e-15
+  hidden linearVelocity_3 -1.920485168563211e-15 3.71552380047775e-15 8.487938928625733e-16
+  hidden angularVelocity_3 1.8062660793154756e-14 -1.0876126380411987e-14 -2.583115313750329e-15
+  hidden linearVelocity_4 -2.96027544091101e-15 6.994553663921633e-16 2.971565504197668e-16
+  hidden angularVelocity_4 -2.074982729779948e-14 1.51868281308172e-14 -3.6346618648445094e-15
+  translation -2.0000034019032578 3.2000026103792223 -0.010710218004262598
+  rotation -5.2505078967529875e-05 -0.0001546746277976929 -0.9999999866594881 0.6544997020207576
   name "CoVAPSy_Car_1"
   controller "<extern>"
-  color 1.0 1.0 0.0
-  translation -4.4 3.0 0
-  rotation 0.0 0.0 1.0 0.0
+  color 1 1 0
   children [
     Solid {
       translation 0.16 0 0.11
-      rotation 0 0 1 0
       children [
         Shape {
           appearance PBRAppearance {
-            baseColor 1.0 1.0 1.0
             metalness 0
           }
           geometry Box {
@@ -45,19 +59,27 @@ TT02_2023b {
   ]
 }
 TT02_2023b {
+  hidden position_0_0 -1.0646397875022486e-12
+  hidden position2_0_0 -3.2858145375482714e-07
+  hidden position_0_1 1.0596959349111576e-12
+  hidden position2_0_1 -3.2858145004505433e-07
+  hidden position_0_2 -1.5006051242092347e-06
+  hidden position_0_3 -1.500603472263339e-06
+  hidden rotation_1 -5.323198937483301e-13 0.9999999999947509 3.2401091885454905e-06 3.2917740992269735e-07
+  hidden rotation_2 -5.298479674528233e-13 -0.9999999999947995 -3.225063176148057e-06 3.2917740992269735e-07
+  hidden rotation_3 0 1 0 1.5005106777160644e-06
+  hidden rotation_4 0 -1 0 1.5005106777160644e-06
+  translation -0.6 1 -0.0107088
+  rotation -7.085925410319154e-08 -0.9999999999962397 2.741471579673503e-06 0.00010436058342489245
   name "Enemy_Car_1"
   controller "<none>"
-  color 0.0 0.0 1.0
-  translation -5.0 2.7 0
-  rotation 0.0 0.0 1.0 0.0
+  color 0 0 1
   children [
     Solid {
       translation 0.16 0 0.11
-      rotation 0 0 1 0
       children [
         Shape {
           appearance PBRAppearance {
-            baseColor 1.0 1.0 1.0
             metalness 0
           }
           geometry Box {
@@ -74,19 +96,33 @@ TT02_2023b {
   ]
 }
 TT02_2023b {
+  hidden position_0_0 -3.11280049844601e-16
+  hidden position2_0_0 1.2294507119184684e-12
+  hidden position_0_1 5.278653523146252e-16
+  hidden position2_0_1 1.2293578520623797e-12
+  hidden position_0_2 2.048801134496323e-12
+  hidden position_0_3 2.047090716143945e-12
+  hidden linearVelocity_0 -6.623238405007689e-07 2.471854088808663e-06 -0.00020679704884320763
+  hidden angularVelocity_0 -3.0057830524297034e-05 -8.053880619115373e-06 -3.1999033358253197e-16
+  hidden linearVelocity_1 -3.221895099086579e-07 1.2024410083452267e-06 -0.0002022232835428123
+  hidden angularVelocity_1 -3.005786305449107e-05 -8.053890607090074e-06 -1.2285999753417938e-14
+  hidden linearVelocity_2 -3.221894236348514e-07 1.2024410312281411e-06 -0.0002022232832346518
+  hidden angularVelocity_2 -3.0057863703038113e-05 -8.05388818225207e-06 1.142790984955633e-14
+  hidden linearVelocity_3 -3.221592494119785e-07 1.2023280674121275e-06 -0.00021016642170096751
+  hidden angularVelocity_3 -3.0057812017332688e-05 -8.053876999633807e-06 -1.7332172373630476e-14
+  hidden linearVelocity_4 -3.2215916207722463e-07 1.2023280913468126e-06 -0.000210166421392646
+  hidden angularVelocity_4 -3.005781270618449e-05 -8.053874506808701e-06 1.2474449951332081e-14
+  translation -1.0000010689949625 2.5000039895887523 -0.010683415557019987
+  rotation -5.054009990295194e-05 -6.586494295204047e-05 -0.9999999965537539 1.3089996972284028
   name "Enemy_Car_2"
   controller "<none>"
-  color 1.0 0.0 1.0
-  translation -5.0 3.3 0
-  rotation 0.0 0.0 1.0 0.0
+  color 1 0 1
   children [
     Solid {
       translation 0.16 0 0.11
-      rotation 0 0 1 0
       children [
         Shape {
           appearance PBRAppearance {
-            baseColor 1.0 1.0 1.0
             metalness 0
           }
           geometry Box {
@@ -103,56 +139,53 @@ TT02_2023b {
   ]
 }
 Solid {
-  translation -4.0 3.0 -0.05
+  translation -4 3 -0.05
   rotation 0 0 1 1.5707963267948966
   children [
     Shape {
       appearance PBRAppearance {
-        baseColor 1.0 1.0 1.0
         metalness 0
       }
       geometry Box {
-        size 1.0 0.1 0.01
+        size 1 0.1 0.01
       }
     }
   ]
   name "Finish_Line"
 }
-
 Solid {
-  translation 0.0 0.5 -0.1
+  translation 0 0.5 -0.1
   children [
     Shape {
       appearance PBRAppearance {
       }
       geometry Box {
-        size 12.0 12.0 0.1
+        size 12 12 0.1
       }
     }
   ]
   name "Ground_Floor"
   boundingObject Shape {
     geometry Box {
-      size 12.0 12.0 0.1
+      size 12 12 0.1
     }
   }
 }
-
 DEF Track Group {
   children [
     DEF Track_Curve_0_0 Group {
       children [
         Solid {
-          translation -5.0 3.0 0.1
-          rotation 0.0 0.0 1.0 4.71238898038469
+          translation -5 3 0.1
+          rotation 0 0 1 4.71238898038469
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -170,16 +203,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -4.0 2.0 0.1
-          rotation 0.0 0.0 1.0 4.71238898038469
+          translation -4 2 0.1
+          rotation 0 0 1 4.71238898038469
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -197,41 +230,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -5.5 2.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -5.5 2.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_0_0_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation -4.5 3.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -4.5 3.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_0_0_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -239,16 +271,16 @@ DEF Track Group {
     DEF Track_Curve_2_0 Group {
       children [
         Solid {
-          translation -1.0 3.0 0.1
-          rotation 0.0 0.0 1.0 3.141592653589793
+          translation -1 3 0.1
+          rotation 0 0 1 3.141592653589793
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -266,16 +298,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -2.0 2.0 0.1
-          rotation 0.0 0.0 1.0 3.141592653589793
+          translation -2 2 0.1
+          rotation 0 0 1 3.141592653589793
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -293,41 +325,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -0.5 2.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -0.5 2.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_2_0_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation -1.5 3.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -1.5 3.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_2_0_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -335,16 +366,16 @@ DEF Track Group {
     DEF Track_Curve_3_0 Group {
       children [
         Solid {
-          translation 1.0 3.0 0.1
-          rotation 0.0 0.0 1.0 4.71238898038469
+          translation 1 3 0.1
+          rotation 0 0 1 4.71238898038469
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -362,16 +393,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 2.0 2.0 0.1
-          rotation 0.0 0.0 1.0 4.71238898038469
+          translation 2 2 0.1
+          rotation 0 0 1 4.71238898038469
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -389,41 +420,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 0.5 2.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 0.5 2.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_3_0_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation 1.5 3.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation 1.5 3.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_3_0_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -431,16 +461,16 @@ DEF Track Group {
     DEF Track_Curve_4_0 Group {
       children [
         Solid {
-          translation 3.0 3.0 0.1
-          rotation 0.0 0.0 1.0 3.141592653589793
+          translation 3 3 0.1
+          rotation 0 0 1 3.141592653589793
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -458,16 +488,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 2.0 2.0 0.1
-          rotation 0.0 0.0 1.0 3.141592653589793
+          translation 2 2 0.1
+          rotation 0 0 1 3.141592653589793
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -485,41 +515,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 3.5 2.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 3.5 2.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_4_0_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation 2.5 3.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation 2.5 3.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_4_0_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -527,16 +556,15 @@ DEF Track Group {
     DEF Track_Curve_2_1 Group {
       children [
         Solid {
-          translation 0.0 2.0 0.1
-          rotation 0.0 0.0 1.0 0.0
+          translation 0 2 0.1
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -554,16 +582,15 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -1.0 1.0 0.1
-          rotation 0.0 0.0 1.0 0.0
+          translation -1 1 0.1
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -581,41 +608,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -1.5 1.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -1.5 1.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_2_1_Green_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation -0.5 0.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -0.5 0.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_2_1_Green_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -623,16 +649,16 @@ DEF Track Group {
     DEF Track_Curve_3_1 Group {
       children [
         Solid {
-          translation 0.0 2.0 0.1
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 0 2 0.1
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -650,16 +676,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 1.0 1.0 0.1
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 1 1 0.1
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -677,41 +703,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 1.5 1.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 1.5 1.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_3_1_Green_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation 0.5 0.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation 0.5 0.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_3_1_Green_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -719,16 +744,15 @@ DEF Track Group {
     DEF Track_Curve_0_2 Group {
       children [
         Solid {
-          translation -5.0 -1.0 0.1
-          rotation 0.0 0.0 1.0 0.0
+          translation -5 -1 0.1
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -746,16 +770,15 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -4.0 0.0 0.1
-          rotation 0.0 0.0 1.0 0.0
+          translation -4 0 0.1
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -773,41 +796,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation -5.5 -0.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -5.5 -0.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_0_2_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation -4.5 -1.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -4.5 -1.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_0_2_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -815,16 +837,16 @@ DEF Track Group {
     DEF Track_Curve_4_2 Group {
       children [
         Solid {
-          translation 3.0 -1.0 0.1
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 3 -1 0.1
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 1.0 0.0 0.0
-                  emissiveColor 1.0 0.0 0.0
-                  specularColor 1.0 0.0 0.0
+                  diffuseColor 1 0 0
+                  emissiveColor 1 0 0
+                  specularColor 1 0 0
                 }
               }
               geometry Mesh {
@@ -842,16 +864,16 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 2.0 0.0 0.1
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 2 0 0.1
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance Appearance {
                 material Material {
                   ambientIntensity 0.5
-                  diffuseColor 0.0 1.0 0.0
-                  emissiveColor 0.0 1.0 0.0
-                  specularColor 0.0 1.0 0.0
+                  diffuseColor 0 1 0
+                  emissiveColor 0 1 0
+                  specularColor 0 1 0
                 }
               }
               geometry Mesh {
@@ -869,41 +891,40 @@ DEF Track Group {
           }
         }
         Solid {
-          translation 3.5 -0.5 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 3.5 -0.5 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_4_2_Red_Straight1"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
         Solid {
-          translation 2.5 -1.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation 2.5 -1.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 1.0 0.1 0.2
+                size 1 0.1 0.2
               }
             }
           ]
           name "Track_Curve_4_2_Red_Straight2"
           boundingObject Box {
-            size 1.0 0.1 0.2
+            size 1 0.1 0.2
           }
         }
       ]
@@ -911,41 +932,39 @@ DEF Track Group {
     DEF Track_1_0_1xE Group {
       children [
         Solid {
-          translation -3.0 3.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -3 3.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_1_0_1xE_Red"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
         Solid {
-          translation -3.0 2.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -3 2.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_1_0_1xE_Green"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
       ]
@@ -953,41 +972,41 @@ DEF Track Group {
     DEF Track_4_1_1xS Group {
       children [
         Solid {
-          translation 3.5 1.0 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 3.5 1 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_4_1_1xS_Red"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
         Solid {
-          translation 2.5 1.0 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation 2.5 1 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_4_1_1xS_Green"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
       ]
@@ -995,41 +1014,39 @@ DEF Track Group {
     DEF Track_3_2_3xW Group {
       children [
         Solid {
-          translation -1.0 -1.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -1 -1.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 6.0 0.1 0.2
+                size 6 0.1 0.2
               }
             }
           ]
           name "Track_3_2_3xW_Red"
           boundingObject Box {
-            size 6.0 0.1 0.2
+            size 6 0.1 0.2
           }
         }
         Solid {
-          translation -1.0 -0.5 0.0
-          rotation 0.0 0.0 1.0 0.0
+          translation -1 -0.5 0
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 6.0 0.1 0.2
+                size 6 0.1 0.2
               }
             }
           ]
           name "Track_3_2_3xW_Green"
           boundingObject Box {
-            size 6.0 0.1 0.2
+            size 6 0.1 0.2
           }
         }
       ]
@@ -1037,41 +1054,41 @@ DEF Track Group {
     DEF Track_0_1_1xN Group {
       children [
         Solid {
-          translation -5.5 1.0 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -5.5 1 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 1.0 0.0 0.0
+                baseColor 1 0 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_0_1_1xN_Red"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
         Solid {
-          translation -4.5 1.0 0.0
-          rotation 0.0 0.0 1.0 1.5707963267948966
+          translation -4.5 1 0
+          rotation 0 0 1 1.5707963267948966
           children [
             Shape {
               appearance PBRAppearance {
-                baseColor 0.0 1.0 0.0
+                baseColor 0 1 0
                 metalness 0
               }
               geometry Box {
-                size 2.0 0.1 0.2
+                size 2 0.1 0.2
               }
             }
           ]
           name "Track_0_1_1xN_Green"
           boundingObject Box {
-            size 2.0 0.1 0.2
+            size 2 0.1 0.2
           }
         }
       ]
