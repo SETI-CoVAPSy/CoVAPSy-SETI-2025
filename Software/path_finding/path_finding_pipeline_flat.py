@@ -16,6 +16,7 @@ from networkx import Graph
 from scipy.ndimage import binary_dilation
 from dataclasses import dataclass
 from enum import Enum
+from matplotlib.patches import Circle
 
 # =======================================
 #  Parameters
@@ -29,13 +30,16 @@ ASTAR_DO_DIAGONAL = (
     True  # whether to allow diagonal moves in A* graph (8-connected vs 4-connected)
 )
 ASTAR_AVERAGE_SPEED_MPS = (
-    1.0  # assumed average speed of opponents for time estimation (m/s)
+    0.3  # assumed average speed of opponents for time estimation (m/s)
 )
 SAMPLE_INTERVAL_S = 0.3   # s, how often to sample points along A* path / random tree for position estimation
 
 WHEELBASE_M = 0.5  # m, distance between front and rear axles for trajectory prediction
 # old distance-based sampling constant removed; time interval SAMPLE_INTERVAL_S now used
-PATH_PLANNING_HORIZON_S = 50.0  # s, how far into the future to plan paths
+PATH_PLANNING_HORIZON_S = 20.0  # s, how far into the future to plan paths
+
+OPPONENT_COLLISION_RADIUS_M = 0.1  # m, radius around opponent positions to consider as collision for trajectory checking
+
 
 # Angle convention: **counter-clockwise positive** (standard math)
 #   theta = 0   → facing +X (right)
@@ -100,6 +104,24 @@ class FigureGenerator:
                 ax.axis("off")
         plt.tight_layout()
         plt.show()
+
+    def show_at_index(self, index: int, blocking: bool = True) -> None:
+        """Show only the figure at the given index."""
+        index = index % len(self.figures)  # wrap around if out of bounds
+
+        name, item = self.figures[index]
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.set_title(name)
+        if callable(item):
+            item(ax)
+        elif isinstance(item, Figure):
+            ax.imshow(figure_to_array(item))
+            ax.axis("off")
+        else:
+            ax.imshow(item)
+            ax.axis("off")
+        plt.tight_layout()
+        plt.show(block=blocking)
 
 
 def get_occupancy_grid():
@@ -378,7 +400,7 @@ def make_draw_path(path: list[tuple[int, int]], name: str) -> Callable[[Axes], N
 
 # compute A* for opponents
 # all_starts = [("seti", positions["seti"])]
-all_starts = []
+all_starts = [("seti", positions["seti"])]
 for i, opp in enumerate(positions["opponents"], start=1):
     all_starts.append((f"opp{i}", opp))
 
@@ -567,8 +589,7 @@ for idx, cmd in enumerate(COMMANDS):
     draw_trajectory(ax_traj, name, idx)
 fig_gen.add_figure("Predicted Trajectories", fig_traj)
 
-# ===== Path planning =====
-
+# ===== Path planning core =====
 class TrajectoryPoint(TypedDict):
     pose: Pose2D # Pose at this point
     command: Command | None # Command chosen to reach this point from the previous one (None for the first point)
@@ -584,6 +605,13 @@ trajectory: list[TrajectoryPoint] = [
         remaining_commands=get_commands_copy()
     )
 ]
+def clone_trajectory(traj: list[TrajectoryPoint]) -> list[TrajectoryPoint]:
+    return [TrajectoryPoint(
+        pose=Pose2D(p["pose"].x, p["pose"].y, p["pose"].theta),
+        command=p["command"],
+        remaining_commands=get_commands_copy()
+    ) for p in traj]
+best_trajectory: list[TrajectoryPoint] = clone_trajectory(trajectory) # copy of the best trajectory found so far
 
 iter_counter = 0
 print(f"Starting path planning procedure for {trajectory_plan_length} points...")
@@ -621,7 +649,23 @@ while len(trajectory) < trajectory_plan_length:
         elif occupancy_grid[py, px]:
             collision = True
             break
+    if collision:
+        continue # Try the next command
 
+    # Collision with opponent planned paths (radius check against all estimated opponent positions)
+    # Use estimated_positions at current length of trajectory as index
+    for name, opp_poses in estimated_positions.items():
+        if name == "seti": # skip our own trajectory
+            continue
+        if len(opp_poses) > len(trajectory):
+            opp_pose = opp_poses[len(trajectory)] # opponent pose at the time we would reach this point
+            for p in global_traj:
+                dist = np.hypot(p.x - opp_pose.x, p.y - opp_pose.y)
+                if dist < OPPONENT_COLLISION_RADIUS_M: # collision radius of 0.5 m
+                    collision = True
+                    break
+        if collision:
+            break
     if collision:
         continue # Try the next command
 
@@ -631,7 +675,9 @@ while len(trajectory) < trajectory_plan_length:
         command=next_command,
         remaining_commands=get_commands_copy() # reset commands for the new point
     ))
-print(f"Planned trajectory with {len(trajectory)} points!")
+    if len(trajectory) > len(best_trajectory):
+        best_trajectory = clone_trajectory(trajectory) # update best trajectory found so far
+print(f"Planned trajectory with {len(best_trajectory)} points!")
 
 # Draw the planned trajectory on the occupancy grid, show triangles at each point indicating the heading, and annotate with the command used to get there.
 fig_plan = Figure()
@@ -645,29 +691,72 @@ ax_plan.set_xlim(extent_plan[0], extent_plan[1])
 ax_plan.set_ylim(extent_plan[2], extent_plan[3])
 
 # convert world poses to axis coords (matching occupancy grid transform)
-axis_coords = [pixel_to_axis(to_pixel_coords(p["pose"])) for p in trajectory]
+axis_coords = [pixel_to_axis(to_pixel_coords(p["pose"])) for p in best_trajectory]
 xs, ys = zip(*axis_coords) if axis_coords else ([], [])
-thetas = [p["pose"].theta for p in trajectory]  # heading unaffected by conversion
+thetas = [p["pose"].theta for p in best_trajectory]  # heading unaffected by conversion
 
-ax_plan.plot(xs, ys, "--", label="Planned Trajectory")
+# prepare a colour map over the plan length and any opponent estimates
+max_op_steps = 0
+for poses in estimated_positions.values():
+    max_op_steps = max(max_op_steps, len(poses))
 
-# Draw orientation arrows using same style as opponents (blue)
-# CCW-positive: cos→dx, sin→dy
+n_steps = max(len(best_trajectory), max_op_steps)
+if n_steps > 1:
+    cmap = plt.get_cmap("viridis")
+    norm = plt.Normalize(vmin=0, vmax=n_steps - 1)
+    colors = [cmap(norm(i)) for i in range(n_steps)]
+else:
+    colors = [plt.get_cmap("viridis")(0)]
+
+# plot our car's trajectory using small arrows oriented by heading
+# the arrows will also use the time-based colour gradient
+if xs and ys:
+    U = [np.cos(t) for t in thetas]
+    V = [np.sin(t) for t in thetas]
+    # use scalar values 0..len(xs)-1 and supply cmap+norm to quiver so
+    # the colour gradient is applied correctly to each arrow
+    scalars = np.arange(len(xs))
+    ax_plan.quiver(xs, ys, U, V, scalars,
+                   cmap=cmap, norm=norm,
+                   scale=20, width=0.005, units="xy", angles="xy",
+                   label="SETI trajectory")
+# optionally connect with a faint line for context
+ax_plan.plot(xs, ys, "--", color="gray", linewidth=0.5)
+
+# Draw orientation arrows; color them according to time-step gradient
+# (may overlap with quiver but provides larger, filled triangles)
 ARROW_SIZE = 1  # metres
-for x, y, theta in zip(xs, ys, thetas):
+for i, (x, y, theta) in enumerate(zip(xs, ys, thetas)):
     dx = np.cos(theta) * ARROW_SIZE * 1.2
     dy = np.sin(theta) * ARROW_SIZE * 1.2
+    col = colors[i] if i < len(colors) else colors[-1]
     ax_plan.arrow(x, y, dx, dy,
                   head_width=ARROW_SIZE,
                   head_length=ARROW_SIZE,
                   length_includes_head=True,
-                  fc='b', ec='b')
+                  fc=col, ec=col)
+
+# plot opponents' predicted positions using same colour scale, always show all
+
+# convert to axis units (pixels) for plotting
+radius_axis = OPPONENT_COLLISION_RADIUS_M * FACTOR_PIXEL_PER_METER
+for name, poses in estimated_positions.items():
+    if not poses or name == "seti":  # skip if no estimates or if this is our own trajectory
+        continue
+    for i, p in enumerate(poses):
+        ox, oy = pixel_to_axis(to_pixel_coords(p))
+        col = colors[min(i, len(colors) - 1)]
+        circ = Circle((ox, oy), radius_axis, color=col, alpha=0.1)
+        ax_plan.add_patch(circ)
+    # add a single legend entry for this opponent series
+    ax_plan.scatter([], [], c=[colors[0]], s=100, marker="o",
+                    label=f"{name} estimates (radius={OPPONENT_COLLISION_RADIUS_M}m)")
 
 # Annotate with commands (if available)
-for i, point in enumerate(trajectory):
+for i, point in enumerate(best_trajectory):
     if point["command"]:
         index_cmd = COMMANDS.index(point["command"])
-        ax_plan.annotate(f"i={i}, (com:{index_cmd + 1})", (xs[i], ys[i]), xytext=(5, 5), textcoords="offset points")
+        ax_plan.annotate(f"{i},{index_cmd + 1}", (xs[i], ys[i]), xytext=(5, 5), textcoords="offset points")
 
 ax_plan.set_title("Planned Trajectory")
 ax_plan.set_xlabel("X (m)")
@@ -676,6 +765,8 @@ ax_plan.legend()
 ax_plan.grid(True)
 fig_gen.add_figure("Planned Trajectory", fig_plan)
 
+
+fig_gen.show_at_index(-1, blocking=True)
 
 # ====== Show figures ======
 
