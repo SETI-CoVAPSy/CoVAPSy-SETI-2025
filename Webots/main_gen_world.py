@@ -22,11 +22,11 @@ from lib_webots_world import (
 # =============================================
 #  User parameters
 # =============================================
-MAP_WIDTH = 3  # in track units
-MAP_HEIGHT = 5  # in track units
+MAP_WIDTH = 7  # in track units
+MAP_HEIGHT = 7  # in track units
 TRACK_MARGIN = min(MAP_WIDTH, MAP_HEIGHT) // 5  # in track units
 TRACK_SCALE = 2.0  # in meters, should be above 2.0
-TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 5
+TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 1
 
 PATH_WORLD = Path(__file__).parent / "Webots_SETI_gen" / "worlds"
 PATH_WBT = PATH_WORLD / "CoVAPSy_SETI_2025_generated.wbt"

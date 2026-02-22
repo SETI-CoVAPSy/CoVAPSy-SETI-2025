@@ -73,7 +73,7 @@ class GilbertDriverHardware(GilbertDriverGeneric):
         self._robot = None # Used for init
         self.camera_config = None
         if use_camera:
-            from picamera2 import Picamera2
+            from picamera2 import Picamera2 # à faire avec cv2 cf
             from controller import Robot
             self.camera = Picamera2()
             self._robot = Robot()

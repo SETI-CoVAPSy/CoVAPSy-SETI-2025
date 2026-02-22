@@ -12,7 +12,7 @@ def generate_launch_description():
         package='tt02_driver',
         executable='driver',
         name='tt02_driver',
-        parameters=[{'target': 'simulation'}, sim_time_arg],
+        parameters=[{'target': 'hardware'}, sim_time_arg],
         output='screen'
     )
 

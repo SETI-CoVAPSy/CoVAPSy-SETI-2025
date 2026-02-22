@@ -7,6 +7,7 @@ import rclpy
 import numpy as np
 from rclpy.time import Time
 from rclpy.node import Node
+from controller import Lidar as WebotsLidar
 from typing import Literal
 from typing_extensions import override
 
@@ -93,6 +94,7 @@ class TT02DriverNode(Node):
     def _init_hardware(self, use_camera: bool) -> None:
         from rplidar import RPLidar
         from tt02_driver.gilbert_driver_hardware import GilbertDriverHardware
+
         self.driver = GilbertDriverHardware(
             serial_port=self.HW_SERIAL_PORT,
             serial_baud=self.HW_SERIAL_BAUDRATE,
@@ -108,7 +110,6 @@ class TT02DriverNode(Node):
     
     def _init_simulation(self, use_camera: bool) -> None:
         from tt02_driver.gilbert_driver_webots import GilbertDriverWebots
-        from controller import Lidar as WebotsLidar
         self.driver = GilbertDriverWebots(
             verbose=self.verbose, 
             use_camera=use_camera
@@ -274,7 +275,7 @@ class TT02DriverNode(Node):
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
     node = TT02DriverNode(
-        "hardware", 
+        "simulation", 
         use_camera=True
     )
     #rclpy.spin(node)
