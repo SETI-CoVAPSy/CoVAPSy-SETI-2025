@@ -40,6 +40,9 @@ PATH_PLANNING_HORIZON_S = 20.0  # s, how far into the future to plan paths
 
 OPPONENT_COLLISION_RADIUS_M = 0.1  # m, radius around opponent positions to consider as collision for trajectory checking
 
+ASTAR_BIAS_STRENGTH = 20.0  # softmax temperature multiplier for biasing command selection toward A* path
+                            # 0 = uniform random, higher = more deterministic toward A* reference
+
 
 # Angle convention: **counter-clockwise positive** (standard math)
 #   theta = 0   → facing +X (right)
@@ -188,7 +191,9 @@ fig_gen = FigureGenerator()
 
 # ======= Initial positions and map =======
 # Get occupancy grid
-occupancy_grid = get_occupancy_grid()
+occupancy_grid_original = get_occupancy_grid()
+# copy for calculations, will be dilated
+occupancy_grid = occupancy_grid_original.copy()
 
 # compute extent in pixel coordinates so that origin (0,0) → center of image
 h, w = occupancy_grid.shape
@@ -197,15 +202,29 @@ extent = (-w / 2, w / 2, -h / 2, h / 2)
 fig_occ = Figure()
 ax_occ = fig_occ.add_subplot(111)
 # origin='lower' makes y increase upward which matches usual coordinate frames
-ax_occ.imshow(
-    np.bitwise_not(occupancy_grid), cmap="gray", extent=extent, origin="lower"
-)
+# draw helper that shows original and highlights inflation later
+
+def _plot_grid(ax):
+    ax.imshow(
+        np.bitwise_not(occupancy_grid_original), cmap="gray", extent=extent, origin="lower"
+    )
+    # added pixels mask will be available once computed
+    if 'occupancy_dilation_added_pixels' in globals():
+        mask = np.zeros((h, w, 4), dtype=float)
+        gray = 0.5
+        mask[occupancy_dilation_added_pixels, :3] = gray
+        mask[occupancy_dilation_added_pixels, 3] = 0.7
+        ax.imshow(mask, extent=extent, origin='lower')
+
+_plot_grid(ax_occ)
 ax_occ.set_xlim(extent[0], extent[1])
 ax_occ.set_ylim(extent[2], extent[3])
 fig_gen.add_figure("Occupancy Grid", fig_occ)
 
 # Apply grow operation to inflate obstacles by 1 pixel (0.0667 m) to account for vehicle size and safety margin
 occupancy_grid = binary_dilation(occupancy_grid, iterations=BINARY_DILATION_PIXELS)
+# record where new pixels appeared
+occupancy_dilation_added_pixels = occupancy_grid & ~occupancy_grid_original
 
 # Get positions
 positions = get_positions()
@@ -214,12 +233,8 @@ positions = get_positions()
 # Plot positions on occupancy grid
 # Draw each vehicle as an arrow oriented by its theta field
 def draw_positions(ax: Axes):
-    # redraw occupancy grid with same extent so axes are centered
-    h, w = occupancy_grid.shape
-    extent = (-w / 2, w / 2, -h / 2, h / 2)
-    ax.imshow(
-        np.bitwise_not(occupancy_grid), cmap="gray", extent=extent, origin="lower"
-    )
+    # redraw occupancy grid using helper (original+inflated pixels overlay)
+    _plot_grid(ax)
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])
 
@@ -370,9 +385,8 @@ def make_draw_path(path: list[tuple[int, int]], name: str) -> Callable[[Axes], N
     def draw(ax: Axes, name=name, path=path):
         h_, w_ = occupancy_grid.shape
         extent = (-w_ / 2, w_ / 2, -h_ / 2, h_ / 2)
-        ax.imshow(
-            np.bitwise_not(occupancy_grid), cmap="gray", extent=extent, origin="lower"
-        )
+        # use helper to draw grid with dilation overlay
+        _plot_grid(ax)
         ax.set_xlim(extent[0], extent[1])
         ax.set_ylim(extent[2], extent[3])
 
@@ -629,9 +643,38 @@ while len(trajectory) < trajectory_plan_length:
             trajectory.pop() # Remove current point (backtracking, should always have a previous point since initial point has all commands)
             continue
 
-    # Get next command to try
-    # next_command = current_point["remaining_commands"].pop(0) # Get and remove the first remaining command
-    next_command_index = np.random.choice(len(current_point["remaining_commands"]))
+    # Get next command to try — biased toward the A* reference trajectory
+    seti_ref = estimated_positions.get("seti", [])
+    step_idx = len(trajectory)  # the time step we are planning for
+    n_remaining = len(current_point["remaining_commands"])
+    if seti_ref and step_idx < len(seti_ref) and ASTAR_BIAS_STRENGTH > 0 and n_remaining > 1:
+        ref_pose = seti_ref[step_idx]
+        # score each remaining command by negative distance of its endpoint to the A* reference
+        scores = np.empty(n_remaining)
+        for ci, cmd in enumerate(current_point["remaining_commands"]):
+            # find command index in master list to reuse precomputed trajectory
+            try:
+                cmd_idx = COMMANDS.index(cmd)
+            except ValueError:
+                # should not happen, fallback to computing
+                local_last = get_command_trajectory(cmd)[-1]
+            else:
+                local_last = COMMANDS_PREDICTED_TRAJECTORY_POSITIONS[cmd_idx][-1]
+            ep = local_last.to_global(current_point["pose"])
+            scores[ci] = -np.hypot(ep.x - ref_pose.x, ep.y - ref_pose.y)
+        # softmax with temperature = 1 / ASTAR_BIAS_STRENGTH
+        # normalize scores to [0,1] so the strength has consistent effect
+        # regardless of the absolute distance scale
+        score_range = scores.max() - scores.min()
+        if score_range > 0:
+            scores = (scores - scores.min()) / score_range  # now in [0,1]
+        scores *= ASTAR_BIAS_STRENGTH
+        scores -= scores.max()  # numerical stability
+        weights = np.exp(scores)
+        weights /= weights.sum()
+        next_command_index = int(np.random.choice(n_remaining, p=weights))
+    else:
+        next_command_index = int(np.random.choice(n_remaining))
     next_command = current_point["remaining_commands"].pop(next_command_index)
     
     # Get trajectory for this command
@@ -686,9 +729,19 @@ ax_plan = fig_plan.add_subplot(111)
 # draw occupancy grid as background so arrows/trajectory sit on top
 h_, w_ = occupancy_grid.shape
 extent_plan = (-w_/2, w_/2, -h_/2, h_/2)
-ax_plan.imshow(np.bitwise_not(occupancy_grid), cmap='gray', extent=extent_plan, origin='lower')
+# reuse helper (which refers to global extent variables; adjust temporarily)
+old_extent = extent
+extent = extent_plan
+_plot_grid(ax_plan)
+extent = old_extent
 ax_plan.set_xlim(extent_plan[0], extent_plan[1])
 ax_plan.set_ylim(extent_plan[2], extent_plan[3])
+
+# also add the A* path for seti (if available) to provide a reference
+if "seti" in paths and paths["seti"]:
+    seti_axis = [(x - w / 2, y - h / 2) for x, y in paths["seti"]]
+    sx, sy = zip(*seti_axis)
+    ax_plan.plot(sx, sy, "r-", linewidth=1, markersize=4, label="SETI A* path", alpha=0.3)
 
 # convert world poses to axis coords (matching occupancy grid transform)
 axis_coords = [pixel_to_axis(to_pixel_coords(p["pose"])) for p in best_trajectory]
@@ -756,7 +809,7 @@ for name, poses in estimated_positions.items():
 for i, point in enumerate(best_trajectory):
     if point["command"]:
         index_cmd = COMMANDS.index(point["command"])
-        ax_plan.annotate(f"{i},{index_cmd + 1}", (xs[i], ys[i]), xytext=(5, 5), textcoords="offset points")
+        # ax_plan.annotate(f"{i},{index_cmd + 1}", (xs[i], ys[i]), xytext=(5, 5), textcoords="offset points")
 
 ax_plan.set_title("Planned Trajectory")
 ax_plan.set_xlabel("X (m)")
