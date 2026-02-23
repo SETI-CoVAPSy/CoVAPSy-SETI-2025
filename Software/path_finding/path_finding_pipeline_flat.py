@@ -12,8 +12,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.axes import Axes
 from typing import Callable, Union, TypedDict, TypeAlias
 import networkx as nx
-from networkx import Graph
-from scipy.ndimage import binary_dilation
+from networkx import Graph, DiGraph
+from scipy.ndimage import binary_dilation, distance_transform_edt
 from dataclasses import dataclass
 from enum import Enum
 from matplotlib.patches import Circle
@@ -33,6 +33,7 @@ ASTAR_AVERAGE_SPEED_MPS = (
     0.3  # assumed average speed of opponents for time estimation (m/s)
 )
 SAMPLE_INTERVAL_S = 0.3   # s, how often to sample points along A* path / random tree for position estimation
+LOCAL_SAMPLE_INTERVAL_S = SAMPLE_INTERVAL_S / 4 # s, time interval between successive points in the local command trajectories (should be <= SAMPLE_INTERVAL_S for consistency)
 
 WHEELBASE_M = 0.5  # m, distance between front and rear axles for trajectory prediction
 # old distance-based sampling constant removed; time interval SAMPLE_INTERVAL_S now used
@@ -40,9 +41,17 @@ PATH_PLANNING_HORIZON_S = 20.0  # s, how far into the future to plan paths
 
 OPPONENT_COLLISION_RADIUS_M = 0.1  # m, radius around opponent positions to consider as collision for trajectory checking
 
-ASTAR_BIAS_STRENGTH = 20.0  # softmax temperature multiplier for biasing command selection toward A* path
+ASTAR_BIAS_STRENGTH = 15.0  # softmax temperature multiplier for biasing command selection toward A* path
                             # 0 = uniform random, higher = more deterministic toward A* reference
 
+MAX_ITERATIONS = 200_000 # max iterations for path planning procedure (to prevent infinite loops)
+
+FORWARD_DOT_THRESHOLD = 0.0  # minimum dot-product of an edge vector with the local forward direction
+                              # to be included in the directed graph.  0.0 = strict forward half-space;
+                              # use a small negative value (e.g. -0.3) to allow slight backward lean.
+
+TRACK_FORWARD_REVERSED = True  # False → green wall on right / red on left  (forward = green→red cross-track)
+                                 # True  → red wall on right / green on left  (forward reversed)
 
 # Angle convention: **counter-clockwise positive** (standard math)
 #   theta = 0   → facing +X (right)
@@ -58,7 +67,8 @@ def get_positions() -> "InitialPositions":
             Pose2D(x=-0.7, y=0.1, theta=0),
             Pose2D(x=0.1, y=0.3, theta=np.pi / 2),
         ],
-        "target": Pose2D(x=1.0, y=2.0, theta=0.0),
+        # "target": Pose2D(x=1.0, y=2.0, theta=0.0),
+        "target": Pose2D(x=-1.0, y=-2, theta=0.0),
     }
 
 
@@ -126,14 +136,33 @@ class FigureGenerator:
         plt.tight_layout()
         plt.show(block=blocking)
 
+class Occupancy(Enum):
+    FREE = 0
+    MISC_OBJECT = 1
+    WALL_RED = 10
+    WALL_GREEN = 11
 
-def get_occupancy_grid():
-    # load carte.png
-    img = Image.open(Path(__file__).parent / "carte.png")
-    img_array = np.array(img, dtype=np.bool_)  # And invert
+OccupancyGrid: TypeAlias = np.ndarray[tuple[int, int], np.dtype[np.uint8]]  # 2D uint8 array: 0=FREE, 1=MISC_OBJECT, 10=WALL_RED, 11=WALL_GREEN
+
+def get_occupancy_grid() -> OccupancyGrid:
+    """Load carte.png (RGB) and map pixel colours to Occupancy values.
+
+    Colour mapping:
+      white (255,255,255) → FREE
+      red   (255,  0,  0) → WALL_RED
+      green (  0,255,  0) → WALL_GREEN
+      any other colour    → MISC_OBJECT
+    """
+    img = Image.open(Path(__file__).parent / "carte.png").convert("RGB")
+    img_array = np.array(img, dtype=np.uint8)   # shape (H, W, 3)
     img_array = np.rot90(img_array, 2)
     img_array = np.flip(img_array, 1)
-    return img_array
+    r, g, b = img_array[:, :, 0], img_array[:, :, 1], img_array[:, :, 2]
+    result = np.full(r.shape, Occupancy.MISC_OBJECT.value, dtype=np.uint8)
+    result[(r == 255) & (g == 255) & (b == 255)] = Occupancy.FREE.value
+    result[(r == 255) & (g == 0)   & (b == 0)]   = Occupancy.WALL_RED.value
+    result[(r == 0)   & (g == 255) & (b == 0)]   = Occupancy.WALL_GREEN.value
+    return result
 
 
 @dataclass
@@ -202,29 +231,113 @@ extent = (-w / 2, w / 2, -h / 2, h / 2)
 fig_occ = Figure()
 ax_occ = fig_occ.add_subplot(111)
 # origin='lower' makes y increase upward which matches usual coordinate frames
-# draw helper that shows original and highlights inflation later
+# draw helper that converts OccupancyGrid values to RGBA colours for display
+
+# Colour palette for each Occupancy value
+_OCCUPANCY_COLOURS: dict[int, tuple[int, int, int, int]] = {
+    Occupancy.FREE.value:        (255, 255, 255, 255),  # white
+    Occupancy.MISC_OBJECT.value: (160, 160, 160, 255),  # gray
+    Occupancy.WALL_RED.value:    (220,  50,  50, 255),  # red
+    Occupancy.WALL_GREEN.value:  ( 50, 180,  50, 255),  # green
+}
+
+def _occupancy_to_rgba(grid: OccupancyGrid) -> np.ndarray:
+    """Return an (H, W, 4) uint8 RGBA array for the given OccupancyGrid."""
+    h_, w_ = grid.shape
+    rgba = np.zeros((h_, w_, 4), dtype=np.uint8)
+    for val, colour in _OCCUPANCY_COLOURS.items():
+        mask = grid == val
+        rgba[mask] = colour
+    # unknown values fall back to magenta so they stand out
+    known = np.zeros((h_, w_), dtype=bool)
+    for val in _OCCUPANCY_COLOURS:
+        known |= grid == val
+    rgba[~known] = (255, 0, 255, 255)
+    return rgba
+
 
 def _plot_grid(ax):
-    ax.imshow(
-        np.bitwise_not(occupancy_grid_original), cmap="gray", extent=extent, origin="lower"
-    )
-    # added pixels mask will be available once computed
+    ax.imshow(_occupancy_to_rgba(occupancy_grid_original), extent=extent, origin="lower")
+    # added pixels mask will be available once dilation has run
     if 'occupancy_dilation_added_pixels' in globals():
-        mask = np.zeros((h, w, 4), dtype=float)
-        gray = 0.5
-        mask[occupancy_dilation_added_pixels, :3] = gray
-        mask[occupancy_dilation_added_pixels, 3] = 0.7
-        ax.imshow(mask, extent=extent, origin='lower')
+        overlay = np.zeros((h, w, 4), dtype=np.uint8)
+        overlay[occupancy_dilation_added_pixels] = (100, 100, 200, 178)  # blue-gray, ~70 % opacity
+        ax.imshow(overlay, extent=extent, origin='lower')
 
 _plot_grid(ax_occ)
 ax_occ.set_xlim(extent[0], extent[1])
 ax_occ.set_ylim(extent[2], extent[3])
 fig_gen.add_figure("Occupancy Grid", fig_occ)
 
-# Apply grow operation to inflate obstacles by 1 pixel (0.0667 m) to account for vehicle size and safety margin
-occupancy_grid = binary_dilation(occupancy_grid, iterations=BINARY_DILATION_PIXELS)
-# record where new pixels appeared
-occupancy_dilation_added_pixels = occupancy_grid & ~occupancy_grid_original
+# Apply grow operation to inflate obstacles by BINARY_DILATION_PIXELS pixels to account for vehicle size / safety margin.
+# The occupancy_grid is a uint8 array, so we dilate on a binary obstacle mask and mark
+# newly added pixels as MISC_OBJECT.
+_obstacle_mask = occupancy_grid_original != Occupancy.FREE.value
+_dilated_mask = binary_dilation(_obstacle_mask, iterations=BINARY_DILATION_PIXELS)
+occupancy_dilation_added_pixels = _dilated_mask & ~_obstacle_mask  # bool mask of newly inflated cells
+occupancy_grid[occupancy_dilation_added_pixels] = Occupancy.MISC_OBJECT.value
+
+# ====== Forward-direction flow field ======
+# Red wall = left side of track, green wall = right side of track when going
+# forward.  The cross-track vector pointing green → red is "leftward";
+# rotating it 90° clockwise gives the local "forward" direction.
+#
+# Steps:
+#   1. EDT to nearest WALL_RED pixel  (dist_to_red)
+#   2. EDT to nearest WALL_GREEN pixel (dist_to_green)
+#   3. f_cross = dist_to_green - dist_to_red  (increases toward red = left)
+#   4. ∇f_cross points leftward
+#   5. forward = rotate ∇f_cross 90° CW:  (gx, gy) → (gy, −gx)
+#
+# np.gradient(f)[0] = ∂f/∂row = ∂f/∂y_world  (rows align with world y because
+# to_pixel_coords maps world y → row index, same direction)
+# np.gradient(f)[1] = ∂f/∂col = ∂f/∂x_world
+
+_red_mask_orig   = occupancy_grid_original == Occupancy.WALL_RED.value
+_green_mask_orig = occupancy_grid_original == Occupancy.WALL_GREEN.value
+
+_dist_to_red   = distance_transform_edt(~_red_mask_orig).astype(float)
+_dist_to_green = distance_transform_edt(~_green_mask_orig).astype(float)
+
+# Cross-track field: increasing toward the "left" wall.  Swapping the sign
+# reverses the derived forward direction without touching anything else.
+_f_cross = (_dist_to_red - _dist_to_green) if TRACK_FORWARD_REVERSED else (_dist_to_green - _dist_to_red)
+_grad_y_fc, _grad_x_fc = np.gradient(_f_cross)   # ∂f/∂y, ∂f/∂x (leftward components)
+
+# Rotate leftward vector 90° CW: (left_x, left_y) → (left_y, −left_x)
+forward_field_x: np.ndarray = _grad_y_fc          # shape (H, W)
+forward_field_y: np.ndarray = -_grad_x_fc         # shape (H, W)
+
+# Normalise
+_fmag = np.hypot(forward_field_x, forward_field_y)
+_fmag[_fmag == 0] = 1.0
+forward_field_x /= _fmag
+forward_field_y /= _fmag
+
+# Visualise the flow field (subsampled quiver on occupancy grid)
+def _draw_flow_field(ax):
+    _plot_grid(ax)
+    ax.set_xlim(extent[0], extent[1])
+    ax.set_ylim(extent[2], extent[3])
+    N = max(1, min(h, w) // 30)   # subsample step
+    ys_q = np.arange(0, h, N)
+    xs_q = np.arange(0, w, N)
+    Xq, Yq = np.meshgrid(xs_q, ys_q)
+    free_q = occupancy_grid[Yq, Xq] == Occupancy.FREE.value
+    Xq_ax = Xq[free_q].astype(float) - w / 2
+    Yq_ax = Yq[free_q].astype(float) - h / 2
+    Uq = forward_field_x[Yq[free_q], Xq[free_q]]
+    Vq = forward_field_y[Yq[free_q], Xq[free_q]]
+    ax.quiver(Xq_ax, Yq_ax, Uq, Vq,
+              scale=50, width=0.003, units='xy', angles='xy',
+              color='navy', alpha=0.7)
+    ax.set_title("Track Forward Flow Field")
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+fig_gen.add_figure("Flow Field", _draw_flow_field)
 
 # Get positions
 positions = get_positions()
@@ -303,50 +416,85 @@ def get_path_length(path: list[tuple[int, int]]) -> float:
 
 
 # Use nx.astar_path()
-# Build graph from occupancy grid where each free cell is a node and edges connect 8-connected neighbors
+# Build a *directed* graph from the occupancy grid.
+# When a flow field (fwd_x / fwd_y arrays) is supplied, every potential edge
+# A→B is only added when dot(B−A, forward_at_A) ≥ dot_threshold, so A* is
+# constrained to travel in the "forward" direction around the circuit.
 def build_graph_from_occupancy_grid(
-    occupancy_grid: NDArray, enable_diagonal: bool = True
-) -> Graph:
-    G = Graph()
+    occupancy_grid: OccupancyGrid,
+    enable_diagonal: bool = True,
+    fwd_x: np.ndarray | None = None,
+    fwd_y: np.ndarray | None = None,
+    dot_threshold: float = 0.0,
+) -> DiGraph:
+    """Return a DiGraph over free pixels.
+
+    If ``fwd_x`` / ``fwd_y`` are provided (normalised forward-direction arrays
+    with the same shape as ``occupancy_grid``), only directed edges whose
+    direction satisfies dot(edge, forward_at_source) >= ``dot_threshold`` are
+    added, enforcing forward-only motion around the track.
+    """
+    G: DiGraph = DiGraph()
     h, w = occupancy_grid.shape
-    # we'll allow 4-connected moves always, plus diagonals only when the
-    # two touching orthogonal neighbors are both free (no wall-cutting).
+    use_flow = fwd_x is not None and fwd_y is not None
     cardinal = [(1, 0), (-1, 0), (0, 1), (0, -1)]
     diagonal = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
 
+    FREE = Occupancy.FREE.value
     for y in range(h):
         for x in range(w):
-            if not occupancy_grid[y, x]:  # free cell
-                G.add_node((x, y))
-                # cardinal neighbors
-                for dx, dy in cardinal:
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < w and 0 <= ny < h and not occupancy_grid[ny, nx]:
-                        G.add_edge((x, y), (nx, ny), weight=1.0)
-                # diagonal neighbors
-                if enable_diagonal:
-                    for dx, dy in diagonal:
-                        nx, ny = x + dx, y + dy
-                        # require that both adjacent cardinal cells are free
-                        adj1 = (x + dx, y)  # horizontal step
-                        adj2 = (x, y + dy)  # vertical step
-                        if (
-                            0 <= nx < w
-                            and 0 <= ny < h
-                            and not occupancy_grid[ny, nx]
-                            and 0 <= adj1[0] < w
-                            and 0 <= adj1[1] < h
-                            and not occupancy_grid[adj1[1], adj1[0]]
-                            and 0 <= adj2[0] < w
-                            and 0 <= adj2[1] < h
-                            and not occupancy_grid[adj2[1], adj2[0]]
-                        ):
-                            G.add_edge((x, y), (nx, ny), weight=np.sqrt(2))
+            if occupancy_grid[y, x] != FREE:
+                continue
+            G.add_node((x, y))
+
+            # local forward direction at this source pixel
+            fx = float(fwd_x[y, x]) if use_flow else 0.0
+            fy = float(fwd_y[y, x]) if use_flow else 0.0
+
+            def _forward_ok(ddx: int, ddy: int) -> bool:
+                if not use_flow:
+                    return True
+                return ddx * fx + ddy * fy >= dot_threshold
+
+            # cardinal neighbors
+            for dx, dy in cardinal:
+                nx_, ny_ = x + dx, y + dy
+                if (
+                    0 <= nx_ < w
+                    and 0 <= ny_ < h
+                    and occupancy_grid[ny_, nx_] == FREE
+                    and _forward_ok(dx, dy)
+                ):
+                    G.add_edge((x, y), (nx_, ny_), weight=1.0)
+
+            # diagonal neighbors (only when both touching cardinal cells are free)
+            if enable_diagonal:
+                for dx, dy in diagonal:
+                    nx_, ny_ = x + dx, y + dy
+                    adj1 = (x + dx, y)
+                    adj2 = (x, y + dy)
+                    if (
+                        0 <= nx_ < w
+                        and 0 <= ny_ < h
+                        and occupancy_grid[ny_, nx_] == FREE
+                        and 0 <= adj1[0] < w
+                        and 0 <= adj1[1] < h
+                        and occupancy_grid[adj1[1], adj1[0]] == FREE
+                        and 0 <= adj2[0] < w
+                        and 0 <= adj2[1] < h
+                        and occupancy_grid[adj2[1], adj2[0]] == FREE
+                        and _forward_ok(dx, dy)
+                    ):
+                        G.add_edge((x, y), (nx_, ny_), weight=np.sqrt(2))
     return G
 
 
 graph = build_graph_from_occupancy_grid(
-    occupancy_grid, enable_diagonal=ASTAR_DO_DIAGONAL
+    occupancy_grid,
+    enable_diagonal=ASTAR_DO_DIAGONAL,
+    fwd_x=forward_field_x,
+    fwd_y=forward_field_y,
+    dot_threshold=FORWARD_DOT_THRESHOLD,
 )
 
 
@@ -504,12 +652,14 @@ class Command(TypedDict):
     speed: float  # m/s
 
 COMMANDS: list[Command] = [
-    # {"steering_angle": 0.0, "speed": 1.0},  # straight
+    {"steering_angle": 0.0, "speed": 1.0},  # straight
     {"steering_angle": 0.0, "speed": 0.3},  # straight slow
+    {"steering_angle": np.radians(30), "speed": 0.3}, # sharp left
+    {"steering_angle": np.radians(-30), "speed": 0.3},# sharp right
     {"steering_angle": np.radians(60), "speed": 0.3}, # sharp left
     {"steering_angle": np.radians(-60), "speed": 0.3},# sharp right
-    # {"steering_angle": np.radians(15), "speed": 0.3}, # left
-    # {"steering_angle": np.radians(-15), "speed": 0.3},# right
+    {"steering_angle": np.radians(15), "speed": 0.3}, # left
+    {"steering_angle": np.radians(-15), "speed": 0.3},# right
 ]
 
 def get_commands_copy() -> list[Command]:
@@ -536,12 +686,12 @@ def get_command_trajectory(command: Command) -> list[Pose2D]:
     speed = command["speed"]
 
     # number of sampling instants (including t=0)
-    n_steps = int(np.ceil(SAMPLE_INTERVAL_S / SAMPLE_INTERVAL_S)) + 1
+    n_steps = int(np.ceil(SAMPLE_INTERVAL_S / LOCAL_SAMPLE_INTERVAL_S)) + 1
     n_steps = max(n_steps, 2)
 
     poses: list[Pose2D] = []
     for i in range(n_steps):
-        t = i * SAMPLE_INTERVAL_S
+        t = i * LOCAL_SAMPLE_INTERVAL_S
         dist = speed * t
         if radius == float("inf"):
             # Straight ahead along +X (theta=0 convention)
@@ -629,7 +779,7 @@ best_trajectory: list[TrajectoryPoint] = clone_trajectory(trajectory) # copy of 
 
 iter_counter = 0
 print(f"Starting path planning procedure for {trajectory_plan_length} points...")
-while len(trajectory) < trajectory_plan_length:
+while len(trajectory) < trajectory_plan_length and iter_counter < MAX_ITERATIONS:
     iter_counter += 1
     if (iter_counter % 100_000) == 0:
         print(f"Iteration {iter_counter}, tl={len(trajectory)}, trl={len(trajectory[-1]['remaining_commands'])}, c={trajectory[-1]['command']}")
@@ -689,7 +839,7 @@ while len(trajectory) < trajectory_plan_length:
         if px < 0 or px >= w or py < 0 or py >= h:
             collision = True
             break
-        elif occupancy_grid[py, px]:
+        elif occupancy_grid[py, px] != Occupancy.FREE.value:
             collision = True
             break
     if collision:
@@ -819,7 +969,7 @@ ax_plan.grid(True)
 fig_gen.add_figure("Planned Trajectory", fig_plan)
 
 
-fig_gen.show_at_index(-1, blocking=True)
+# fig_gen.show_at_index(-1, blocking=True)
 
 # ====== Show figures ======
 
