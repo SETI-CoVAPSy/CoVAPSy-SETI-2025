@@ -39,6 +39,15 @@ class GilbertDriverHardware(GilbertDriverGeneric):
     # === Misc ===
     CMD_PREFIX = "!ii"  # First object in sent struct message
 
+    EXPOSURE = 10_000_000  # Exposure time in nanoseconds
+    GST_PIPELINE = ( # GStreamer pipeline for camera capture (using NVIDIA hardware acceleration)
+    f'nvarguscamerasrc exposuretimerange="{EXPOSURE} {EXPOSURE}" '
+    'aelock=true gainrange="1 1" ! '
+    'video/x-raw(memory:NVMM),width=640,height=480,format=NV12,framerate=30/1 ! '
+    'nvvidconv ! video/x-raw,format=BGRx ! '
+    'videoconvert ! video/x-raw,format=BGR ! appsink'
+)
+
     def __init__(
         self,
         serial_port: str = "/dev/ttyTHS1",
@@ -70,25 +79,6 @@ class GilbertDriverHardware(GilbertDriverGeneric):
         # Camera
         self.use_camera = use_camera
         self.camera = None
-        self._robot = None # Used for init
-        self.camera_config = None
-        if use_camera:
-            from picamera2 import Picamera2
-            from controller import Robot
-            self.camera = Picamera2()
-            self._robot = Robot()
-
-            # Main config
-            self.camera_config = self.camera.create_still_configuration(
-                # main={"size": (640, 480)} # Customize if needed
-            )
-            self.camera_config["format"] = "RGB888"  # Ensure RGB       
-
-            self.camera.configure(self.camera_config)
-
-            # Misc config
-            # self.camera.set_controls({"ExposureTime": 10000, "AnalogueGain": 1.0})
-            # self.camera.set_controls({"AfMode": controls.AfModeEnum.Continuous}) # Continuous autofocus
 
         if auto_open:
             self.open()
@@ -99,6 +89,7 @@ class GilbertDriverHardware(GilbertDriverGeneric):
     @override
     def open(self) -> None:
         """Open the serial connection to the STM32 controller."""
+        # TODO (comment if not on car)
         self.serial.port = "/dev/ttyTHS1"
         self.serial.baudrate = 115200
         self.serial.open()
@@ -107,14 +98,11 @@ class GilbertDriverHardware(GilbertDriverGeneric):
                 f"Serial connection opened at {self.serial.port} with {self.serial.baudrate}."
             )
         # Also ensure camera is started when opening hardware
-        if self.camera:
-            try:
-                self.camera.start()
-                if self._verbose:
-                    self.log("Picamera2 started on open()")
-            except Exception as exc:
-                if self._verbose:
-                    self.log(f"Failed to start Picamera2 on open(): {exc}")
+        if self.use_camera:
+            import cv2
+            self.camera = cv2.VideoCapture(self.GST_PIPELINE, cv2.CAP_GSTREAMER)
+            if not self.camera.isOpened():
+                raise RuntimeError("Failed to open camera with GStreamer pipeline.")
 
     @override
     def close(self) -> None:
@@ -125,18 +113,15 @@ class GilbertDriverHardware(GilbertDriverGeneric):
             self.log("Serial connection closed.")
 
         if self.camera:
-            try:
-                self.camera.stop()
-                if self._verbose:
-                    self.log("Picamera2 stopped on close()")
-            except Exception as exc:
-                if self._verbose:
-                    self.log(f"Failed to stop Picamera2 on close(): {exc}")
+            self.camera.release()
+            if self._verbose:
+                self.log("Camera released.")
 
     @override
     def send_command(self) -> None:
         """Send set speed and angle to the STM32 controller. Will use internal state."""
         # Retrieve corresponding duty cycles
+        # return # TODO
         pwm_duty_angle_centre = self.PWM_DUTY_ANGLE_MAX + self.PWM_DUTY_ANGLE_MIN / 2
         pwm_duty_angle = pwm_duty_angle_centre + self.STEERING_DIRECTION * (
             self.PWM_DUTY_ANGLE_MAX - self.PWM_DUTY_ANGLE_MIN
@@ -172,9 +157,15 @@ class GilbertDriverHardware(GilbertDriverGeneric):
     def get_camera_frame(self) -> None | NDArray[uint8]:
         """Capture a frame from the camera (if enabled)."""
         if self.camera is None:
+            self.log("Camera not initialized or not enabled.")
             return None
         
-        return self.camera.capture_array()
+        ret, frame = self.camera.read()
+        if not ret:
+            self.log("Failed to capture frame from camera.")
+            return None
+        
+        return frame
 
 if __name__ == "__main__":
     with GilbertDriverHardware(verbose=True, auto_open=False) as gilbert:

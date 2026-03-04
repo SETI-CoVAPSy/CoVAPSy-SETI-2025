@@ -30,6 +30,7 @@ setup(
             'driver = tt02_driver.driver_node:main',
             'pilot = tt02_driver.circuit_follower:main',
             'pilot_alt = tt02_driver.circuit_follower_alt:main',
+            'measurements = tt02_driver.measurements_node:main',
             'rl1_env = tt02_driver.rl1_env:main',
             'rl1_agent = tt02_driver.rl1_agent:main',
         ],

@@ -19,7 +19,7 @@ def generate_launch_description():
     # 2. Pilot Node (Auto-pilot)
     pilot_node = Node(
         package='tt02_driver',
-        executable='pilot',
+        executable='pilot_alt',
         name='auto_pilot',
         parameters=[sim_time_arg]
     )

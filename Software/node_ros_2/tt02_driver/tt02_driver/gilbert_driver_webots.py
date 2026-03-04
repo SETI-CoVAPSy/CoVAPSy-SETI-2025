@@ -105,5 +105,9 @@ class GilbertDriverWebots(GilbertDriverGeneric):
         """Capture a frame from the camera (if enabled)."""
         if not self.camera:
             return None
-        
-        return np.array(self.camera.getImageArray(), dtype=np.uint8)
+        image = self.camera.getImage()
+        image_array = np.frombuffer(image, dtype=np.uint8).reshape((self.camera.getHeight(), self.camera.getWidth(), 4))[:, :, :3]  # Get RGB channels, ignore alpha
+        # Swap R and B channels (Webots gives BGR, we want RGB)
+        image_array = image_array[:, :, ::-1]
+        print(f"Captured camera frame of shape {image_array.shape}")
+        return image_array

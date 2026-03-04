@@ -7,6 +7,7 @@ import rclpy
 import numpy as np
 from rclpy.time import Time
 from rclpy.node import Node
+from controller import Lidar as WebotsLidar
 from typing import Literal
 from typing_extensions import override
 
@@ -93,6 +94,7 @@ class TT02DriverNode(Node):
     def _init_hardware(self, use_camera: bool) -> None:
         from rplidar import RPLidar
         from tt02_driver.gilbert_driver_hardware import GilbertDriverHardware
+
         self.driver = GilbertDriverHardware(
             serial_port=self.HW_SERIAL_PORT,
             serial_baud=self.HW_SERIAL_BAUDRATE,
@@ -100,7 +102,6 @@ class TT02DriverNode(Node):
             use_camera=use_camera
         )
         
-        # return # TODO
         self.hw_lidar = RPLidar(self.HW_LIDAR_PORT,baudrate=self.HW_LIDAR_BAUDRATE)
         self.hw_lidar.connect()
         self.hw_lidar.start_motor()
@@ -109,7 +110,6 @@ class TT02DriverNode(Node):
     
     def _init_simulation(self, use_camera: bool) -> None:
         from tt02_driver.gilbert_driver_webots import GilbertDriverWebots
-        from controller import Lidar as WebotsLidar
         self.driver = GilbertDriverWebots(
             verbose=self.verbose, 
             use_camera=use_camera
@@ -219,8 +219,6 @@ class TT02DriverNode(Node):
 
 
     def publish_clock(self) -> None:
-        if self._target != "simulation":
-            return
         sim_time = self.webots_driver.getTime() 
 
         clock_msg = Clock()
@@ -231,7 +229,6 @@ class TT02DriverNode(Node):
 
     def publish_scan(self) -> None:
         """Publishes last LIDAR scan."""
-        # return # TODO
         # Création du message
         msg = LaserScan()   
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -278,7 +275,7 @@ class TT02DriverNode(Node):
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
     node = TT02DriverNode(
-        "hardware", 
+        "simulation", 
         use_camera=True
     )
     #rclpy.spin(node)
@@ -294,25 +291,25 @@ def main(args: list[str] | None = None):
             frame = node.driver.get_camera_frame()
             # Save the frame as an image file
             img = Image.fromarray(frame)
-            file_path = Path.home() / "camera_capture.png"
+            file_path = Path(__file__).parent / "camera_capture.png"
             img.save(file_path)
             node.get_logger().info(f"Camera frame captured and saved as {file_path}")
 
         thread = threading.Thread(target=capture_camera)
         thread.start()
 
-        # # Schedule a lidar dump in delay s in parallel
-        # def dump_lidar():
-        #     import time
-        #     time.sleep(delay)
-        #     scan = node.webots_lidar.getRangeImage()
-        #     # Save the scan as a text file
-        #     file_path = Path(__file__).parent / "lidar_scan.txt"
-        #     np.savetxt(file_path, scan, fmt="%.3f")
-        #     node.get_logger().info(f"LIDAR scan captured and saved as {file_path}")
+        # Schedule a lidar dump in delay s in parallel
+        def dump_lidar():
+            import time
+            time.sleep(delay)
+            scan = node.webots_lidar.getRangeImage()
+            # Save the scan as a text file
+            file_path = Path(__file__).parent / "lidar_scan.txt"
+            np.savetxt(file_path, scan, fmt="%.3f")
+            node.get_logger().info(f"LIDAR scan captured and saved as {file_path}")
 
-        # thread = threading.Thread(target=dump_lidar)
-        # thread.start()
+        thread = threading.Thread(target=dump_lidar)
+        thread.start()
 
         node.run()
     except KeyboardInterrupt:

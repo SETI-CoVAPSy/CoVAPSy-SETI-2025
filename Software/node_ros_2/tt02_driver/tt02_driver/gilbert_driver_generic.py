@@ -18,7 +18,7 @@ class GilbertDriverGeneric(ABC):
 
     CAMERA_FOV_DEG: float = 120.0 # FoV of the camera (degrees)
 
-    def duty_cycle_to_us(self, duty_cycle):
+    def duty_cycle_to_us(self, duty_cycle: float) -> int:
         """Convert duty cycle [0.0-100.0] to corresponding duration in µs."""
         return int((duty_cycle / 100) * self.PWM_PERIOD_US)
 

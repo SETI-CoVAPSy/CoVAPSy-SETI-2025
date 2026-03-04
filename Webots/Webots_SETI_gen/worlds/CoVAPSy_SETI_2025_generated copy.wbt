@@ -1,0 +1,1080 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2022b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "../protos/TT02_2023b.proto"
+
+WorldInfo {
+}
+Viewpoint {
+orientation -0.49747884224006406 0.6050877728050384 0.6215976099739475 2.081904069517053
+position 6.158656608120317 -5.250076751623688 46.317718817228396
+followType "Mounted Shot"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+TT02_2023b {
+  name "CoVAPSy_Car_1"
+  controller "<extern>"
+  color 1.0 1.0 0.0
+  translation -4.4 3.0 0
+  rotation 0.0 0.0 1.0 0.0
+  children [
+    Solid {
+      translation 0.16 0 0.11
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1.0 1.0 1.0
+            metalness 0
+          }
+          geometry Box {
+            size 0.01 0.05 0.05
+          }
+        }
+        Camera {
+          name "camera_gilbert"
+          width 200
+          height 30
+        }
+      ]
+    }
+  ]
+}
+TT02_2023b {
+  name "Enemy_Car_1"
+  controller "<none>"
+  color 0.0 0.0 1.0
+  translation -5.0 2.7 0
+  rotation 0.0 0.0 1.0 0.0
+  children [
+    Solid {
+      translation 0.16 0 0.11
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1.0 1.0 1.0
+            metalness 0
+          }
+          geometry Box {
+            size 0.01 0.05 0.05
+          }
+        }
+        Camera {
+          name "camera_gilbert"
+          width 200
+          height 30
+        }
+      ]
+    }
+  ]
+}
+TT02_2023b {
+  name "Enemy_Car_2"
+  controller "<none>"
+  color 1.0 0.0 1.0
+  translation -5.0 3.3 0
+  rotation 0.0 0.0 1.0 0.0
+  children [
+    Solid {
+      translation 0.16 0 0.11
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1.0 1.0 1.0
+            metalness 0
+          }
+          geometry Box {
+            size 0.01 0.05 0.05
+          }
+        }
+        Camera {
+          name "camera_gilbert"
+          width 200
+          height 30
+        }
+      ]
+    }
+  ]
+}
+Solid {
+  translation -4.0 3.0 -0.05
+  rotation 0 0 1 1.5707963267948966
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1.0 1.0 1.0
+        metalness 0
+      }
+      geometry Box {
+        size 1.0 0.1 0.01
+      }
+    }
+  ]
+  name "Finish_Line"
+}
+
+Solid {
+  translation 0.0 0.5 -0.1
+  children [
+    Shape {
+      appearance PBRAppearance {
+      }
+      geometry Box {
+        size 12.0 12.0 0.1
+      }
+    }
+  ]
+  name "Ground_Floor"
+  boundingObject Shape {
+    geometry Box {
+      size 12.0 12.0 0.1
+    }
+  }
+}
+
+DEF Track Group {
+  children [
+    DEF Track_Curve_0_0 Group {
+      children [
+        Solid {
+          translation -5.0 3.0 0.1
+          rotation 0.0 0.0 1.0 4.71238898038469
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_0_0_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -4.0 2.0 0.1
+          rotation 0.0 0.0 1.0 4.71238898038469
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_0_0_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -5.5 2.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_0_0_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -4.5 3.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_0_0_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_2_0 Group {
+      children [
+        Solid {
+          translation -1.0 3.0 0.1
+          rotation 0.0 0.0 1.0 3.141592653589793
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_2_0_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -2.0 2.0 0.1
+          rotation 0.0 0.0 1.0 3.141592653589793
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_2_0_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -0.5 2.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_2_0_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -1.5 3.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_2_0_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_3_0 Group {
+      children [
+        Solid {
+          translation 1.0 3.0 0.1
+          rotation 0.0 0.0 1.0 4.71238898038469
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_3_0_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 2.0 2.0 0.1
+          rotation 0.0 0.0 1.0 4.71238898038469
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_3_0_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 0.5 2.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_3_0_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation 1.5 3.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_3_0_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_4_0 Group {
+      children [
+        Solid {
+          translation 3.0 3.0 0.1
+          rotation 0.0 0.0 1.0 3.141592653589793
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_4_0_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 2.0 2.0 0.1
+          rotation 0.0 0.0 1.0 3.141592653589793
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_4_0_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 3.5 2.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_4_0_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation 2.5 3.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_4_0_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_2_1 Group {
+      children [
+        Solid {
+          translation 0.0 2.0 0.1
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_2_1_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -1.0 1.0 0.1
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_2_1_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -1.5 1.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_2_1_Green_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -0.5 0.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_2_1_Green_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_3_1 Group {
+      children [
+        Solid {
+          translation 0.0 2.0 0.1
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_3_1_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 1.0 1.0 0.1
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_3_1_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 1.5 1.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_3_1_Green_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation 0.5 0.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_3_1_Green_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_0_2 Group {
+      children [
+        Solid {
+          translation -5.0 -1.0 0.1
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_0_2_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -4.0 0.0 0.1
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_0_2_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation -5.5 -0.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_0_2_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -4.5 -1.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_0_2_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_Curve_4_2 Group {
+      children [
+        Solid {
+          translation 3.0 -1.0 0.1
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 1.0 0.0 0.0
+                  emissiveColor 1.0 0.0 0.0
+                  specularColor 1.0 0.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_4_2_Red"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 2.0 0.0 0.1
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance Appearance {
+                material Material {
+                  ambientIntensity 0.5
+                  diffuseColor 0.0 1.0 0.0
+                  emissiveColor 0.0 1.0 0.0
+                  specularColor 0.0 1.0 0.0
+                }
+              }
+              geometry Mesh {
+                url [
+                  "ImageToStl_virage.obj"
+                ]
+              }
+            }
+          ]
+          name "Track_Curve_4_2_Green"
+          boundingObject Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+        Solid {
+          translation 3.5 -0.5 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_4_2_Red_Straight1"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation 2.5 -1.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 1.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_Curve_4_2_Red_Straight2"
+          boundingObject Box {
+            size 1.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_1_0_1xE Group {
+      children [
+        Solid {
+          translation -3.0 3.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_1_0_1xE_Red"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -3.0 2.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_1_0_1xE_Green"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_4_1_1xS Group {
+      children [
+        Solid {
+          translation 3.5 1.0 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_4_1_1xS_Red"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation 2.5 1.0 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_4_1_1xS_Green"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_3_2_3xW Group {
+      children [
+        Solid {
+          translation -1.0 -1.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 6.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_3_2_3xW_Red"
+          boundingObject Box {
+            size 6.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -1.0 -0.5 0.0
+          rotation 0.0 0.0 1.0 0.0
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 6.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_3_2_3xW_Green"
+          boundingObject Box {
+            size 6.0 0.1 0.2
+          }
+        }
+      ]
+    }
+    DEF Track_0_1_1xN Group {
+      children [
+        Solid {
+          translation -5.5 1.0 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 1.0 0.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_0_1_1xN_Red"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+        Solid {
+          translation -4.5 1.0 0.0
+          rotation 0.0 0.0 1.0 1.5707963267948966
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.0 1.0 0.0
+                metalness 0
+              }
+              geometry Box {
+                size 2.0 0.1 0.2
+              }
+            }
+          ]
+          name "Track_0_1_1xN_Green"
+          boundingObject Box {
+            size 2.0 0.1 0.2
+          }
+        }
+      ]
+    }
+  ]
+}

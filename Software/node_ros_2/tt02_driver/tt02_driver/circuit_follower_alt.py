@@ -20,12 +20,17 @@ class CircuitFollower(Node):
 
         self.FRONT_THRESHOLD  = 1.0   # Distance to slow down
 
+        # Follow-the-gap tuning
+        self.FOLLOW_GAP_WINDOW_DEG = 60    # forward search window (degrees, total)
+        self.SAFETY_DISTANCE       = 0.35  # minimum acceptable clearance (m)
+        self.BUBBLE_DEG            = 10    # obstacle 'bubble' half-width in degrees
+
         # CHANGED: Adapted KP for the "Real Car" logic.
         # Real car used 0.02 deg/mm. Converted to rad/m, that's roughly 0.35.
         # You can tune this around 0.3 to 0.6.
-        self.KP               = 0.4
+        self.KP               = 0.3
 
-        self.MAX_STEER        = 0.7   # maximum steering angle (rad)
+        self.MAX_STEER        = 1.0   # maximum steering angle (rad)
         self.INVERT_STEERING  = False # Set to True if steering is inverted
         # ==========================================================
 
@@ -34,47 +39,66 @@ class CircuitFollower(Node):
 
 
     def lidar_callback(self, msg: LaserScan):
-        # self.get_logger().info(f"Mid: {lidar_angle_middle}, Angle: {lidar_angle_amplitude}")
-        lidar_angle_amplitude = msg.angle_max - msg.angle_min
-        lidar_angle_middle = (msg.angle_max + msg.angle_min) / 2.0
-        point_count = len(msg.ranges)
+        """Follow-the-gap controller.
+        """
+        ranges = np.array(msg.ranges)
+        angles = msg.angle_min + np.arange(len(ranges)) * msg.angle_increment
+
+        # sanitize measurements
+        ranges = np.where(np.isfinite(ranges), ranges, msg.range_max)
+        ranges = np.clip(ranges, 0.0, msg.range_max)
+
+        # focus on forward window (centered on 0)
+        half_window_rad = np.radians(self.FOLLOW_GAP_WINDOW_DEG / 2.0)
+        window_mask = np.abs(angles) <= half_window_rad
+        window_ranges = ranges[window_mask].copy()
+        window_angles = angles[window_mask]
 
         drive_msg = AckermannDrive()
 
-        # Get ranges at some angles
-        def get_range_at_angle(angle_deg):
-            angle_rad = np.radians(angle_deg)
-            index = int(((angle_rad - msg.angle_min) / (msg.angle_max - msg.angle_min)) * point_count)
-            index = np.clip(index, 0, point_count - 1)
-            return msg.ranges[index]
-        range_m30 = get_range_at_angle(-30)
-        range_m15 = get_range_at_angle(-15)
-        range_0   = get_range_at_angle(0)
-        range_p15 = get_range_at_angle(15)
-        range_p30 = get_range_at_angle(30)
-        # self.get_logger().info(f"Ranges: m30:{range_m30:.2f} 0:{range_0:.2f} p30:{range_p30:.2f}")
-        
-        # Mean, ignoring invalid values, default to max range if all invalid
-        vals_p = [r for r in [range_p30, range_p15] if np.isfinite(r)]
-        mean_p = np.mean(vals_p) if vals_p else msg.range_max
-        vals_m = [r for r in [range_m30, range_m15] if np.isfinite(r)]
-        mean_m = np.mean(vals_m) if vals_m else msg.range_max
-        
-        # Steering
-        if range_0 < mean_p or range_0 < mean_m: # Agressive steering
-            if mean_p - mean_m != 0:
-                drive_msg.steering_angle = 1/(mean_p - mean_m) * self.KP
-            else:
-                drive_msg.steering_angle = 0.0
-        else: # Proportional steering
-            drive_msg.steering_angle = (mean_p - mean_m) * self.KP
-        
-        drive_msg.steering_angle = np.clip(drive_msg.steering_angle, -self.MAX_STEER, self.MAX_STEER)
+        if window_ranges.size == 0:
+            drive_msg.steering_angle = 0.0
+            drive_msg.speed = self.SLOW_SPEED
+            self.publisher_.publish(drive_msg)
+            return
 
-        # Speed Control
-        front_vals = [r for r in [range_m15, range_0, range_p15] if np.isfinite(r)]
-        front_distance = np.mean(front_vals) if front_vals else msg.range_max
-        drive_msg.speed = np.clip(front_distance**1.5 * self.KP, self.SLOW_SPEED*2, self.TARGET_SPEED)
+        # mark as free when clearance > SAFETY_DISTANCE
+        free_mask = window_ranges > self.SAFETY_DISTANCE
+
+        # apply a small angular bubble around close obstacles to avoid edge grazing
+        if not np.all(free_mask):
+            bubble_rad = np.radians(self.BUBBLE_DEG)
+            close_idxs = np.where(~free_mask)[0]
+            for ci in close_idxs:
+                low_ang = window_angles[ci] - bubble_rad
+                high_ang = window_angles[ci] + bubble_rad
+                removal = (window_angles >= low_ang) & (window_angles <= high_ang)
+                free_mask[removal] = False
+
+        # find contiguous free segments inside the forward window
+        if not np.any(free_mask):
+            # no gap found — be conservative
+            best_angle = 0.0
+            drive_msg.speed = self.SLOW_SPEED
+        else:
+            idxs = np.where(free_mask)[0]
+            groups = np.split(idxs, np.where(np.diff(idxs) != 1)[0] + 1)
+            # choose the largest gap
+            best_group = max(groups, key=lambda g: g.size)
+            # inside that gap, pick the index with maximum clearance (safer) — can pick middle instead
+            rel_idx = best_group[np.argmax(window_ranges[best_group])]
+            best_angle = float(window_angles[rel_idx])
+            # speed proportional to average clearance in chosen gap (clamped)
+            avg_clearance = float(np.mean(window_ranges[best_group]))
+            drive_msg.speed = float(np.clip((avg_clearance / self.FRONT_THRESHOLD) * self.TARGET_SPEED,
+                                            self.SLOW_SPEED, self.TARGET_SPEED))
+
+        # steering: proportional to angle (radians)
+        steering = best_angle * self.KP
+        if self.INVERT_STEERING:
+            steering = -steering
+        drive_msg.steering_angle = float(np.clip(steering, -self.MAX_STEER, self.MAX_STEER))
+
         self.publisher_.publish(drive_msg)
     
 

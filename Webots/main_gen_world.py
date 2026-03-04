@@ -22,11 +22,11 @@ from lib_webots_world import (
 # =============================================
 #  User parameters
 # =============================================
-MAP_WIDTH = 3  # in track units
-MAP_HEIGHT = 5  # in track units
+MAP_WIDTH = 7  # in track units
+MAP_HEIGHT = 7  # in track units
 TRACK_MARGIN = min(MAP_WIDTH, MAP_HEIGHT) // 5  # in track units
 TRACK_SCALE = 2.0  # in meters, should be above 2.0
-TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 5
+TRACK_GENERATION_STEPS = (MAP_WIDTH * MAP_HEIGHT) * 1
 
 PATH_WORLD = Path(__file__).parent / "Webots_SETI_gen" / "worlds"
 PATH_WBT = PATH_WORLD / "CoVAPSy_SETI_2025_generated.wbt"
@@ -819,7 +819,7 @@ followType "Mounted Shot"''')
     car1 = CoVAPSyCar(
         name="CoVAPSy_Car_1",
         controller="<extern>",
-        color=(1.0, 0.0, 0.0),  # Red
+        color=(1.0, 1.0, 0.0),  # Yellow
         translation=(
             (start_pos[1] - width / 2) * TRACK_SCALE + 0.6,
             (-start_pos[0] + height / 2) * TRACK_SCALE,
@@ -828,6 +828,30 @@ followType "Mounted Shot"''')
         # translation=(0.0, -1.0, 0),
     )
     world.components.append(car1)
+
+    car2 = CoVAPSyCar(
+        name="Enemy_Car_1",
+        controller="<none>",
+        color=(0.0, 0.0, 1.0),  # Blue
+        translation=(
+            (start_pos[1] - width / 2) * TRACK_SCALE,
+            (-start_pos[0] + height / 2) * TRACK_SCALE - 0.3,
+            0,
+        ),
+    )
+    world.components.append(car2)
+
+    car3 = CoVAPSyCar(
+        name="Enemy_Car_2",
+        controller="<none>",
+        color=(1.0, 0.0, 1.0),  # Magenta
+        translation=(
+            (start_pos[1] - width / 2) * TRACK_SCALE,
+            (-start_pos[0] + height / 2) * TRACK_SCALE + 0.3,
+            0,
+        ),
+    )
+    world.components.append(car3)
 
     # Finish line
     finish_line = GridFinishLine(
