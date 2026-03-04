@@ -153,11 +153,26 @@ class TrackWallDirection(Enum):
 def pose_to_pixel(
     pose: Pose2D, pixels_per_meter: float, w: int, h: int
 ) -> tuple[int, int]:
-    """Convert a world-frame pose to grid pixel coords (col, row)."""
-    px = int(pose.x * pixels_per_meter + w // 2)
-    py = int(-pose.y * pixels_per_meter + h // 2)
+    """Convert a world-frame pose to grid pixel coords (col, row).
+
+    This version rounds to integers and is intended for indexing the occupancy
+    grid.  Other plotting functions should use :func:`pose_to_plot` to avoid
+    quantisation artefacts."""
+    px = int(np.round(pose.x * pixels_per_meter + w / 2))
+    py = int(np.round(-pose.y * pixels_per_meter + h / 2))
     return (px, py)
 
+
+def pose_to_pixel_float(
+    pose: Pose2D, pixels_per_meter: float, w: int, h: int
+) -> tuple[float, float]:
+    """Convert a world-frame pose to grid pixel coords (col, row).
+
+    This version returns floating-point coordinates and is intended for plotting
+    purposes."""
+    px = pose.x * pixels_per_meter + w / 2
+    py = -pose.y * pixels_per_meter + h / 2
+    return (px, py)
 
 # ====================================================
 #  Implementation
@@ -228,15 +243,15 @@ def make_graph_and_flow_from_occupancy_grid(
 
             # check if edge direction is consistent with forward flow
             def _forward_ok(ddx: int, ddy: int) -> bool:
-                return ddx * forward_col[y, x] + ddy * forward_row[y, x] >= 0.0
+                return ddx * forward_col[y, x] + ddy * forward_row[y, x] >= -1e-3
 
-            # add cardinal edges
+            # add cardinal edges (unit cost)
             for dx, dy in cardinal:
                 nx_, ny_ = x + dx, y + dy
                 if 0 <= nx_ < w and 0 <= ny_ < h and occupancy_grid[ny_, nx_] == FREE:
                     if _forward_ok(dx, dy):
-                        circuit_graph.add_edge((x, y), (nx_, ny_))
-            # add diagonal edges
+                        circuit_graph.add_edge((x, y), (nx_, ny_), weight=1.0)
+            # add diagonal edges (√2 cost)
             if enable_diagonal:
                 for dx, dy in diagonal:
                     nx_, ny_ = x + dx, y + dy
@@ -251,26 +266,29 @@ def make_graph_and_flow_from_occupancy_grid(
                             and occupancy_grid[y, x + dx] == FREE
                         ):
                             if _forward_ok(dx, dy):
-                                circuit_graph.add_edge((x, y), (nx_, ny_))
+                                circuit_graph.add_edge(
+                                    (x, y), (nx_, ny_), weight=np.sqrt(2)
+                                )
     return circuit_graph, (forward_col, forward_row)
 
 
 def naive_path_planning(
     graph: Graph, start: tuple[int, int], goal: tuple[int, int]
 ) -> list[tuple[int, int]]:
-    """Naive path planning algorithm (e.g. BFS)
+    """Naive path planning algorithm using NetworkX shortest path.
 
     Args:
         graph: The graph to search, with nodes as (x, y) pixel coordinates.
         start: The starting pixel coordinate (x, y).
         goal: The target pixel coordinate (x, y).
     Returns:
-        List of (x, y) pixel coordinates along the shortest path from start to goal."""
+        List of (x, y) pixel coordinates along the shortest path from start to goal
+        according to the weights stored in the graph edges. If no path exists
+        or either endpoint is missing, an empty list is returned."""
     try:
-        return nx.shortest_path(graph, source=start, target=goal)
-    except nx.NetworkXNoPath:
-        return []
-    except nx.NodeNotFound:
+        # NetworkX will automatically use the "weight" attribute if present.
+        return nx.shortest_path(graph, source=start, target=goal, weight="weight")
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
         return []
 
 
@@ -361,6 +379,35 @@ def naive_position_prediction(
     return estimated_positions
 
 
+# ------------------------------------------------------------
+# Utility helpers
+# ------------------------------------------------------------
+
+
+def trajectory_to_positions(
+    trajectory: list[TrajectoryPoint],
+) -> list[Pose2D]:
+    """Convert a trajectory of command endpoints into a dense pose list.
+
+    Args:
+        trajectory: Output of :func:`super_mega_fusion_path_planning`.
+    Returns:
+        A list of ``Pose2D`` instances sampled along the executed commands in
+        chronological order (including the initial pose)."""
+    if not trajectory:
+        return []
+
+    poses: list[Pose2D] = [trajectory[0].pose]
+    current = trajectory[0].pose
+    for tp in trajectory[1:]:
+        if tp.command is None:
+            continue
+        for local in tp.command.positions:
+            global_p = local.to_global(current)
+            poses.append(global_p)
+        current = poses[-1]
+    return poses
+
 def super_mega_fusion_path_planning(
     occupancy_grid: OccupancyGridLabelled,
     position_start: Pose2D,
@@ -370,6 +417,7 @@ def super_mega_fusion_path_planning(
     estimated_positions_seti: Optional[list[Pose2D]] = None,
     estimated_positions_opponents: Optional[list[list[Pose2D]]] = None,
     max_iterations: int = 200_000,
+    backtrack_count: int = 1,
     closest_path_bias_strength: float = 1.0,
     command_priority_bias_strength: float = 1.0,
 ) -> list[TrajectoryPoint]:
@@ -435,8 +483,7 @@ def super_mega_fusion_path_planning(
                 # Initial position exhausted all commands
                 break
             else:
-                K = 1  # Times to backtrack.
-                k_back = min(K, len(trajectory) - 1)
+                k_back = min(backtrack_count, len(trajectory) - 1)
                 for _ in range(k_back):
                     trajectory.pop()  # backtrack
                 continue
@@ -476,10 +523,10 @@ def super_mega_fusion_path_planning(
                 )
                 scores += priority_scores * command_priority_bias_strength
 
-            scores -= scores.max()  # numerical stability before softmax
-            weights = np.exp(scores)
-            weights /= weights.sum()
-            next_command_index = int(np.random.choice(n_remaining, p=weights))
+            # deterministic selection: choose the command with highest weighted score
+            # softmax is not required; compare raw scores directly for argmax.
+            # if multiple commands tie, the first (lowest index) is picked automatically by argmax.
+            next_command_index = int(np.argmax(scores))
         else:
             next_command_index = 0
 
@@ -634,7 +681,7 @@ def draw_figure(
         viridis_colors = cmap(np.linspace(0, 1, step_count))
 
     def plot_arrow(pose: Pose2D, color: str, label: Optional[str] = None) -> None:
-        x_px, y_px = pose_to_pixel(pose, pixels_per_meter, w, h)
+        x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
         dx = np.cos(pose.theta) * 1.0  # arrow length in pixels
         dy = -np.sin(pose.theta) * 1.0
         plt.arrow(
@@ -654,19 +701,22 @@ def draw_figure(
 
     # Plot SETI trajectory
     if positions_seti:
-        # Plot dotted path
+        # Plot dotted path (float coords to avoid snapping)
         xs: list[float] = []
         ys: list[float] = []
         for pose in positions_seti:
-            x_px, y_px = pose_to_pixel(pose, pixels_per_meter, w, h)
+            x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
             xs.append(x_px)
             ys.append(y_px)
         plt.plot(xs, ys, c="blue", linestyle="--", alpha=0.7, label="SETI Path")
-        # Plot arrows for each pose using viridis_colors when available
-        for i, pose in enumerate(positions_seti):
+        # Plot arrows for each pose using viridis_colors when available.
+        # skip some samples to avoid clutter
+        skip = max(1, len(positions_seti) // 30)
+        for idx in range(0, len(positions_seti), skip):
+            pose = positions_seti[idx]
             color = "blue"
-            if viridis_colors is not None and i < len(viridis_colors):
-                c = viridis_colors[i]
+            if viridis_colors is not None and idx < len(viridis_colors):
+                c = viridis_colors[idx]
                 color = (float(c[0]), float(c[1]), float(c[2]))
             plot_arrow(pose, color=color)
 
@@ -675,7 +725,7 @@ def draw_figure(
         xs = []
         ys = []
         for pose in positions_naive_seti:
-            x_px, y_px = pose_to_pixel(pose, pixels_per_meter, w, h)
+            x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
             xs.append(x_px)
             ys.append(y_px)
         # use a single label for the entire path
@@ -688,7 +738,7 @@ def draw_figure(
             xs = []
             ys = []
             for pose in poses:
-                x_px, y_px = pose_to_pixel(pose, pixels_per_meter, w, h)
+                x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
                 xs.append(x_px)
                 ys.append(y_px)
             plt.plot(
@@ -703,7 +753,7 @@ def draw_figure(
             # Also scatter disks of collision_radius_m, with color viridis based on
             if viridis_colors is not None and poses:
                 for i, pose in enumerate(poses):
-                    x_px, y_px = pose_to_pixel(pose, pixels_per_meter, w, h)
+                    x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
                     circle = plt.Circle(
                         (x_px, y_px),
                         collision_radius_m * pixels_per_meter,
@@ -721,7 +771,7 @@ def draw_figure(
             plot_arrow(start_pos, "red", label=f"Opponent {j+1} Start")
     # Plot target if given (plus marker rather than arrow)
     if target_pose:
-        tx, ty = pose_to_pixel(target_pose, pixels_per_meter, w, h)
+        tx, ty = pose_to_pixel_float(target_pose, pixels_per_meter, w, h)
         plt.scatter(tx, ty, c="green", marker="+", s=100, label="Target")
 
     plt.legend(loc="lower left")
@@ -739,7 +789,7 @@ if __name__ == "__main__":
 
     # ====== Parameters ======
 
-    WHEELBASE_M = 0.5 # m distance between front and rear axles
+    WHEELBASE_M = 0.5  # m distance between front and rear axles
     PIXELS_PER_METER = 15  # pixels for one meter
     COLLISION_RADIUS_M = (
         1 / PIXELS_PER_METER
@@ -750,30 +800,41 @@ if __name__ == "__main__":
     COMMAND_TRAJECTORY_SUBSTEPS = (
         5  # how many trajectory points to precompute for each command
     )
+    BACKTRACK_COUNT = 1  # how many steps to backtrack during path planning
 
     # Planning
     sfh, cts, wb = SAMPLE_FREQUENCY_HZ, COMMAND_TRAJECTORY_SUBSTEPS, WHEELBASE_M
     PLANNING_COMMANDS: list[Command] = [  #
-        Command(0.0, 1.0, sfh, cts, wb),  # straight
-        Command(np.radians(15), 0.8, sfh, cts, wb),  # slight left
+        Command(0.0,             1.0, sfh, cts, wb),  # straight
+        Command(np.radians(15),  0.8, sfh, cts, wb),  # slight left
         Command(np.radians(-15), 0.8, sfh, cts, wb),  # slight right
-        Command(0.0, 0.3, sfh, cts, wb),  # straight slow
-        Command(np.radians(30), 0.5, sfh, cts, wb),  # left
+        Command(0.0,             0.3, sfh, cts, wb),  # straight slow
+        Command(np.radians(30),  0.5, sfh, cts, wb),  # left
         Command(np.radians(-30), 0.5, sfh, cts, wb),  # right
-    #     Command(np.radians(60), 0.3, sfh, cts, wb),  # sharp left
-    #     Command(np.radians(-60), 0.3, sfh, cts, wb),  # sharp right
+        Command(np.radians(60),  0.3, sfh, cts, wb),  # sharp left
+        Command(np.radians(-60), 0.3, sfh, cts, wb),  # sharp right
     ]
     MAX_ITERATIONS = 200_000  # maximum iterations for the path planning search
-    TRAJECTORY_PLAN_LENGTH = 90  # default number of trajectory points to plan
+    TRAJECTORY_PLAN_LENGTH = 70  # default number of trajectory points to plan
 
-    CLOSEST_PATH_BIAS_STRENGTH = 5.0  # softmax temperature scale for A* reference bias
+    CLOSEST_PATH_BIAS_STRENGTH = 10  # softmax temperature scale for A* reference bias
     COMMAND_PRIORITY_BIAS_STRENGTH = (
-        2.0  # softmax scale favouring lower-index (faster) commands
+        0  # softmax scale favouring lower-index (faster) commands
     )
+
+    # Start positions
+    position_start_seti = Pose2D(x=-1.0, y=-0.2, theta=np.pi / 6)
+    position_start_oponents = [
+        Pose2D(x=-0.7, y=0.1, theta=0),
+        Pose2D(x=0.1, y=0.3, theta=np.pi / 2),
+    ]
+    position_target = Pose2D(x=0.8, y=-2, theta=0.0)
 
     # Load occupancy grid from image
     print("Loading occupancy grid...")
-    img = Image.open(Path(__file__).parent / "test_resources" / "carte.png").convert("RGB")
+    img = Image.open(Path(__file__).parent / "test_resources" / "carte.png").convert(
+        "RGB"
+    )
     img_array = np.array(img, dtype=np.uint8)  # shape (H, W, 3)
 
     # Convert to occupancy grid with labels
@@ -816,15 +877,6 @@ if __name__ == "__main__":
         print(
             f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges."
         )
-
-    # Define start positions in global coordinates
-    print("Defining start positions...")
-    position_start_seti = Pose2D(x=-1.0, y=-0.2, theta=np.pi / 6)
-    position_start_oponents = [
-        Pose2D(x=-0.7, y=0.1, theta=0),
-        Pose2D(x=0.1, y=0.3, theta=np.pi / 2),
-    ]
-    position_target = Pose2D(x=-1.0, y=-2, theta=0.0)
 
     H, W = occupancy_grid_labelled.shape
     cell_start_seti = pose_to_pixel(position_start_seti, PIXELS_PER_METER, W, H)
@@ -873,18 +925,23 @@ if __name__ == "__main__":
         estimated_positions_opponents=positions_opponents,
         trajectory_plan_length=TRAJECTORY_PLAN_LENGTH,
         max_iterations=MAX_ITERATIONS,
+        backtrack_count=BACKTRACK_COUNT,
         closest_path_bias_strength=CLOSEST_PATH_BIAS_STRENGTH,
         command_priority_bias_strength=COMMAND_PRIORITY_BIAS_STRENGTH,
     )
 
     # Display results
     if True:
+        # expand the coarse endpoint trajectory into a dense set of samples so
+        # the drawn path appears smooth rather than zig‑zaggy
+        smooth_seti = trajectory_to_positions(seti_trajectory)
+
         draw_figure(
             occupancy_grid_labelled,
             PIXELS_PER_METER,
             COLLISION_RADIUS_M,
             positions_naive_seti=positions_seti,
-            positions_seti=[p.pose for p in seti_trajectory],
+            positions_seti=smooth_seti,
             positions_opponents=positions_opponents,
             start_position_seti=position_start_seti,
             start_positions_opponents=position_start_oponents,

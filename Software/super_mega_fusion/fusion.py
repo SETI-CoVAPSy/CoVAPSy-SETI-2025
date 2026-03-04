@@ -148,7 +148,7 @@ def lidar_get_labelled_ranges(
 
 def clustering(
     points: np.ndarray[tuple[int, ...], np.dtype[np.float32]],
-    eps: float = 0.5,
+    eps: float = 0.8,
     min_samples: int = 3,
 ) -> np.ndarray[tuple[int], np.dtype[np.int32]]:
     """Cluster points using a spatial-index based DBSCAN variant.
@@ -261,7 +261,8 @@ if __name__ == "__main__":
 
     CAM_BAND_Y_MIN = 20
     CAM_BAND_Y_MAX = 25
-    CAM_FOV_DEG = np.rad2deg(0.785398)  # Field of view of the camera (degrees)
+    CAM_FOV_DEG = 43
+    # CAM_FOV_DEG = np.rad2deg(0.785398)  # Field of view of the camera (degrees)
     LIDAR_FOV_DEG = 360  # Field of view of the LIDAR (degrees), centered on the front of the car, so e.g. 270 means 135 degrees to the left and 135 degrees to the right. Note: this is not necessarily the same as the camera FoV, which may be wider or narrower.
 
     # ====== Main ======
@@ -330,27 +331,48 @@ if __name__ == "__main__":
     # Convert to Cartesian coordinates (x, y)
     lidar_angles_rad = np.deg2rad(lidar_angles)
     lidar_x = lidar_ranges_in_fov * np.sin(lidar_angles_rad)
-    lidar_y = lidar_ranges_in_fov * np.cos(lidar_angles_rad)
+    lidar_y = lidar_ranges_in_fov * np.cos(lidar_angles_rad)   
     lidar_positions = cast(
         LidarCartesianPositions, np.stack((lidar_x, lidar_y), axis=-1)
     )
     opponent_positions = get_opponent_positions(lidar_positions, lidar_labels)
     if True:
         # Display only
-        # Show labellet points and opponent positions
+        # Show labelled points and opponent positions
+        # RED WALL
         plt.scatter(
-            lidar_positions[:, 0],
-            lidar_positions[:, 1],
-            c=lidar_labels,
-            cmap="tab10",
-            label="LiDAR Points",
+            lidar_positions[lidar_labels == SegmentationLabels.WALL_RED.value][:, 0],
+            lidar_positions[lidar_labels == SegmentationLabels.WALL_RED.value][:, 1],
+            c="red",
+            label="Red Wall",
+        )
+        # GREEN WALL
+        plt.scatter(
+            lidar_positions[lidar_labels == SegmentationLabels.WALL_GREEN.value][:, 0],
+            lidar_positions[lidar_labels == SegmentationLabels.WALL_GREEN.value][:, 1],
+            c="green",
+            label="Green Wall",
+        )
+        # Misc (and non opponent
+        plt.scatter(
+            lidar_positions[lidar_labels == SegmentationLabels.MISC_OBSTACLE.value][:, 0],
+            lidar_positions[lidar_labels == SegmentationLabels.MISC_OBSTACLE.value][:, 1],
+            c="gray",
+            label="Misc/Unknown",
+        )
+        # OPPONENT
+        plt.scatter(
+            lidar_positions[lidar_labels == SegmentationLabels.OPPONENT.value][:, 0],
+            lidar_positions[lidar_labels == SegmentationLabels.OPPONENT.value][:, 1],
+            c="blue",
+            label="Opponent Points",
         )
         if opponent_positions:
             opponent_positions_array = np.array(opponent_positions)
             plt.scatter(
                 opponent_positions_array[:, 0],
                 opponent_positions_array[:, 1],
-                c="red",
+                c="purple",
                 marker="x",
                 label="Opponent Positions",
             )
