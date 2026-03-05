@@ -13,7 +13,7 @@ PREDICTION = '#BA4A00'
 
 class MPC:
     def __init__(self, model, N, Q, R, QN, StateConstraints, InputConstraints,
-                 ay_max):
+                 ay_max, SolverSettings=None):
         """
         Constructor for the Model Predictive Controller.
         :param model: bicycle model object to be controlled
@@ -46,6 +46,19 @@ class MPC:
         # Maximum lateral acceleration
         self.ay_max = ay_max
 
+        default_solver_settings = {
+            'verbose': False,
+            'warm_start': True,
+            'polish': False,
+            'adaptive_rho': True,
+            'max_iter': 10000,
+            'eps_abs': 1e-3,
+            'eps_rel': 1e-3,
+        }
+        if SolverSettings is not None:
+            default_solver_settings.update(SolverSettings)
+        self.solver_settings = default_solver_settings
+
         # Current control and prediction
         self.current_prediction = None
 
@@ -54,9 +67,17 @@ class MPC:
 
         # Current control signals
         self.current_control = np.zeros((self.nu*self.N))
+        # Last applied control [v, delta] used as robust fallback.
+        self.last_applied_control = np.zeros(self.nu)
 
         # Initialize Optimization Problem
         self.optimizer = osqp.OSQP()
+
+    def _get_fallback_control(self):
+        """Return a safe fallback control when optimization is invalid."""
+        if np.all(np.isfinite(self.last_applied_control)):
+            return np.array(self.last_applied_control, dtype=float)
+        return np.array([0.0, 0.0])
 
     def _init_problem(self):
         """
@@ -156,7 +177,7 @@ class MPC:
 
         # Initialize optimizer
         self.optimizer = osqp.OSQP()
-        self.optimizer.setup(P=P, q=q, A=A, l=l, u=u, verbose=False)
+        self.optimizer.setup(P=P, q=q, A=A, l=l, u=u, **self.solver_settings)
 
     def get_control(self):
         """
@@ -168,8 +189,10 @@ class MPC:
         nx = self.model.n_states
         nu = 2
 
-        # Update current waypoint
-        self.model.get_current_waypoint()
+        # Update current waypoint unless an external module (ROS node) manages
+        # waypoint synchronization explicitly.
+        if not getattr(self.model, "external_waypoint_sync", False):
+            self.model.get_current_waypoint()
 
         # Update spatial state
         self.model.spatial_state = self.model.t2s(reference_state=
@@ -182,13 +205,38 @@ class MPC:
         # Solve optimization problem
         dec = self.optimizer.solve()
 
+        status_raw = str(getattr(dec.info, "status", "unknown"))
+        status = status_raw.lower()
+        allow_suboptimal = "maximum iterations reached" in status
+        if dec.x is None or (("solved" not in status) and not allow_suboptimal):
+            print(f"OSQP failed with status='{status_raw}'. Using fallback control.")
+            u = self._get_fallback_control()
+            self.infeasibility_counter += 1
+            if self.infeasibility_counter >= self.N:
+                self.infeasibility_counter = self.N - 1
+            return u
+        if allow_suboptimal:
+            print(f"OSQP status='{status_raw}', using best available iterate.")
+
         try:
             # Get control signals
-            control_signals = np.array(dec.x[-self.N*nu:])
+            control_signals = np.asarray(dec.x[-self.N*nu:], dtype=float)
+            if not np.all(np.isfinite(control_signals)):
+                raise RuntimeError("OSQP returned non-finite control values")
+
+            # Ensure we never propagate numerically unstable controls.
+            umin = self.input_constraints['umin']
+            umax = self.input_constraints['umax']
+            control_signals[0::2] = np.clip(control_signals[0::2], umin[0], umax[0])
+            control_signals[1::2] = np.clip(control_signals[1::2], umin[1], umax[1])
+
             control_signals[1::2] = np.arctan(control_signals[1::2] *
                                               self.model.length)
             v = control_signals[0]
             delta = control_signals[1]
+
+            if not np.isfinite(v) or not np.isfinite(delta):
+                raise RuntimeError("MPC command contains non-finite values")
 
             # Update control signals
             self.current_control = control_signals
@@ -201,23 +249,22 @@ class MPC:
 
             # Get current control signal
             u = np.array([v, delta])
+            self.last_applied_control = np.array(u, dtype=float)
 
             # if problem solved, reset infeasibility counter
             self.infeasibility_counter = 0
 
-        except:
+        except Exception as exc:
 
-            print('Infeasible problem. Previously predicted'
-                  ' control signal used!')
-            id = nu * (self.infeasibility_counter + 1)
-            u = np.array(self.current_control[id:id+2])
+            print(f"Infeasible/invalid MPC solution ({exc}). Previously predicted control signal used!")
+            u = self._get_fallback_control()
 
             # increase infeasibility counter
             self.infeasibility_counter += 1
 
-        if self.infeasibility_counter == (self.N - 1):
-            print('No control signal computed!')
-            exit(1)
+        if self.infeasibility_counter >= (self.N - 1):
+            print('No valid control signal computed for multiple steps; keeping last valid fallback control.')
+            u = self._get_fallback_control()
 
         return u
 

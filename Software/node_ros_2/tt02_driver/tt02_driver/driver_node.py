@@ -55,9 +55,9 @@ class TT02DriverNode(Node):
         self._update_counter = 0
 
         # === Odometry initialization ===
-        self.x = 0.0
-        self.y = 0.0
-        self.theta = 0.0
+        self.x = -3.0
+        self.y = -1.3
+        self.theta = -2.8798
         self.last_time = self.get_clock().now()
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)

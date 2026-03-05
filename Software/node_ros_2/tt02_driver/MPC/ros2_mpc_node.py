@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import importlib
+import traceback
 from dataclasses import dataclass
 
 import numpy as np
@@ -171,6 +172,24 @@ class TT02MPCNode(Node):
         self.declare_parameter("reference_speed", 0.8)
         self.declare_parameter("track_half_width", 0.35)
         self.declare_parameter("ay_max", 3.0)
+        self.declare_parameter("q_ey", 1.0)
+        self.declare_parameter("q_epsi", 0.7)
+        self.declare_parameter("q_t", 0.0)
+        self.declare_parameter("qn_ey", 1.0)
+        self.declare_parameter("qn_epsi", 1.0)
+        self.declare_parameter("qn_t", 0.0)
+        self.declare_parameter("r_speed", 0.5)
+        self.declare_parameter("r_steer", 0.05)
+        self.declare_parameter("osqp_max_iter", 20000)
+        self.declare_parameter("osqp_eps_abs", 1e-3)
+        self.declare_parameter("osqp_eps_rel", 1e-3)
+        self.declare_parameter("wp_ordered_mode", True)
+        # -1 means auto-select nearest waypoint at startup.
+        self.declare_parameter("wp_ordered_start_index", -1)
+        self.declare_parameter("wp_reached_distance", 0.45)
+        self.declare_parameter("wp_pass_margin", 0.05)
+        self.declare_parameter("debug_decisions", False)
+        self.declare_parameter("debug_decisions_every", 10)
 
         # Example waypoints for a simple track (can be overridden by parameters)
         # from test_track.png
@@ -180,7 +199,7 @@ class TT02MPCNode(Node):
         )
         self.declare_parameter(
             "waypoints_y",
-            [-1.6, -4.3, -4.3, -3.1, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
+            [-1.6, -4.3, -4.3, -3.44, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
         )
 
         self.control_period = float(self.get_parameter("control_period").value)
@@ -188,6 +207,28 @@ class TT02MPCNode(Node):
         self.ref_speed = float(self.get_parameter("reference_speed").value)
         self.track_half_width = float(self.get_parameter("track_half_width").value)
         self.ay_max = float(self.get_parameter("ay_max").value)
+        q_ey = float(self.get_parameter("q_ey").value)
+        q_epsi = float(self.get_parameter("q_epsi").value)
+        q_t = float(self.get_parameter("q_t").value)
+        qn_ey = float(self.get_parameter("qn_ey").value)
+        qn_epsi = float(self.get_parameter("qn_epsi").value)
+        qn_t = float(self.get_parameter("qn_t").value)
+        r_speed = float(self.get_parameter("r_speed").value)
+        r_steer = float(self.get_parameter("r_steer").value)
+        self.osqp_max_iter = int(self.get_parameter("osqp_max_iter").value)
+        self.osqp_eps_abs = float(self.get_parameter("osqp_eps_abs").value)
+        self.osqp_eps_rel = float(self.get_parameter("osqp_eps_rel").value)
+        self.wp_ordered_mode = bool(self.get_parameter("wp_ordered_mode").value)
+        self.wp_ordered_start_index = int(self.get_parameter("wp_ordered_start_index").value)
+        self.wp_reached_distance = max(0.05, float(self.get_parameter("wp_reached_distance").value))
+        self.wp_pass_margin = max(0.0, float(self.get_parameter("wp_pass_margin").value))
+        self.debug_decisions = bool(self.get_parameter("debug_decisions").value)
+        self.debug_decisions_every = int(self.get_parameter("debug_decisions_every").value)
+        if self.debug_decisions_every <= 0:
+            self.debug_decisions_every = 1
+
+        self._tick_counter = 0
+        self._ordered_wp_id: int | None = None
 
         wp_x = [float(v) for v in self.get_parameter("waypoints_x").value]
         wp_y = [float(v) for v in self.get_parameter("waypoints_y").value]
@@ -206,14 +247,25 @@ class TT02MPCNode(Node):
             width=0.188, #width of the TT02 in meters
             Ts=self.control_period,
         )
+        self.model.external_waypoint_sync = True
 
         self.max_steer_rad = math.radians(GilbertDriverGeneric.ANGLE_LIMIT_DEG)
         self.max_speed = float(GilbertDriverGeneric.SPEED_LIMIT_FORWARD)
         self.min_speed = float(GilbertDriverGeneric.SPEED_LIMIT_REVERSE)
 
-        q = sparse.diags([1.0, 0.0, 0.0])
-        r = sparse.diags([0.5, 0.0])
-        qn = sparse.diags([1.0, 0.0, 0.0])
+        q = sparse.diags([q_ey, q_epsi, q_t])
+        r = sparse.diags([r_speed, r_steer])
+        qn = sparse.diags([qn_ey, qn_epsi, qn_t])
+
+        solver_settings = {
+            "max_iter": self.osqp_max_iter,
+            "eps_abs": self.osqp_eps_abs,
+            "eps_rel": self.osqp_eps_rel,
+            "verbose": False,
+            "warm_start": True,
+            "polish": False,
+            "adaptive_rho": True,
+        }
 
         input_constraints = {
             "umin": np.array([self.min_speed, -math.tan(self.max_steer_rad) / self.model.length]),
@@ -233,6 +285,7 @@ class TT02MPCNode(Node):
             StateConstraints=state_constraints,
             InputConstraints=input_constraints,
             ay_max=self.ay_max,
+            SolverSettings=solver_settings,
         )
 
         self.latest_pose: tuple[float, float, float] | None = None
@@ -243,6 +296,9 @@ class TT02MPCNode(Node):
 
         self.get_logger().info(
             "MPC node started: publishing Ackermann on /car/command from /odom feedback"
+        )
+        self.get_logger().info(
+            f"MPC debug_decisions={self.debug_decisions} every={self.debug_decisions_every} ticks"
         )
 
     def _on_odometry(self, msg: Odometry) -> None:
@@ -255,31 +311,86 @@ class TT02MPCNode(Node):
         y = float(msg.pose.pose.position.y)
         self.latest_pose = (x, y, yaw)
 
-    def _find_nearest_waypoint_index(self, x: float, y: float) -> int:
-        distances = [math.hypot(wp.x - x, wp.y - y) for wp in self.reference_path.waypoints]
-        return int(np.argmin(distances))
+    def _waypoint_distance(self, wp_id: int, x: float, y: float) -> float:
+        wp = self.reference_path.waypoints[wp_id]
+        return float(math.hypot(wp.x - x, wp.y - y))
 
-    def _sync_model_with_odometry(self) -> None:
+    def _find_nearest_waypoint_index(self, x: float, y: float) -> tuple[int, float]:
+        n_wp = len(self.reference_path.waypoints)
+        distances = [self._waypoint_distance(i, x, y) for i in range(n_wp)]
+        nearest_wp_id = int(np.argmin(distances))
+        return nearest_wp_id, float(distances[nearest_wp_id])
+
+    @staticmethod
+    def _forward_steps(start_id: int, end_id: int, n_wp: int) -> int:
+        return (end_id - start_id) % n_wp
+
+    def _sync_model_with_odometry(self) -> tuple[int, float]:
         assert self.latest_pose is not None
         x, y, yaw = self.latest_pose
 
-        nearest_wp_id = self._find_nearest_waypoint_index(x, y)
-        self.model.wp_id = nearest_wp_id
-        self.model.current_waypoint = self.reference_path.waypoints[nearest_wp_id]
-        self.model.s = float(self.reference_path.cumulative_lengths[nearest_wp_id])
+        if self.wp_ordered_mode:
+            n_wp = len(self.reference_path.waypoints)
+            nearest_wp_id, nearest_wp_dist = self._find_nearest_waypoint_index(x, y)
+
+            if self._ordered_wp_id is None:
+                if 0 <= self.wp_ordered_start_index < n_wp:
+                    self._ordered_wp_id = self.wp_ordered_start_index
+                else:
+                    self._ordered_wp_id = nearest_wp_id
+
+            # If ordered target drifts too far behind while another waypoint in
+            # front is clearly nearest, resync once to avoid chasing an old wp.
+            forward_to_nearest = self._forward_steps(self._ordered_wp_id, nearest_wp_id, n_wp)
+            backward_to_nearest = self._forward_steps(nearest_wp_id, self._ordered_wp_id, n_wp)
+            should_catch_up = (
+                0 < forward_to_nearest <= backward_to_nearest
+                and nearest_wp_dist + self.wp_pass_margin < self._waypoint_distance(self._ordered_wp_id, x, y)
+            )
+            if should_catch_up:
+                self._ordered_wp_id = nearest_wp_id
+
+            selected_wp_id = self._ordered_wp_id
+            selected_wp_dist = self._waypoint_distance(selected_wp_id, x, y)
+
+            # Advance in strict order once the current target is reached/passed.
+            next_wp_id = (selected_wp_id + 1) % n_wp
+            next_wp_dist = self._waypoint_distance(next_wp_id, x, y)
+            reached_current = selected_wp_dist <= self.wp_reached_distance
+            passed_current = next_wp_dist + self.wp_pass_margin < selected_wp_dist
+            if reached_current or passed_current:
+                selected_wp_id = next_wp_id
+                selected_wp_dist = next_wp_dist
+
+            self._ordered_wp_id = selected_wp_id
+        else:
+            selected_wp_id, selected_wp_dist = self._find_nearest_waypoint_index(x, y)
+
+        self.model.wp_id = selected_wp_id
+        self.model.current_waypoint = self.reference_path.waypoints[selected_wp_id]
+        self.model.s = float(self.reference_path.cumulative_lengths[selected_wp_id])
 
         self.model.temporal_state = TemporalState(x=x, y=y, psi=yaw)
+        return selected_wp_id, selected_wp_dist
 
     def _on_control_tick(self) -> None:
         if self.latest_pose is None:
             return
 
-        self._sync_model_with_odometry()
+        self._tick_counter += 1
+        selected_wp_id, selected_wp_dist = self._sync_model_with_odometry()
 
         try:
             u = self.mpc.get_control()
         except Exception as exc:
             self.get_logger().warn(f"MPC solve failed: {exc}")
+            if self.debug_decisions:
+                self.get_logger().warn(traceback.format_exc())
+            # Do not keep stale/high command when solver fails.
+            stop_msg = AckermannDrive()
+            stop_msg.speed = 0.0
+            stop_msg.steering_angle = 0.0
+            self.command_publisher.publish(stop_msg)
             return
 
         speed_cmd = float(np.clip(u[0], self.min_speed, self.max_speed))
@@ -290,11 +401,34 @@ class TT02MPCNode(Node):
         msg.steering_angle = steer_cmd
         self.command_publisher.publish(msg)
 
+        if self.debug_decisions and self._tick_counter % self.debug_decisions_every == 0:
+            x, y, yaw = self.latest_pose
+            active_wp_id = int(self.model.wp_id)
+            active_wp = self.reference_path.waypoints[active_wp_id]
+
+            e_y = float(self.model.spatial_state.e_y)
+            e_psi = float(self.model.spatial_state.e_psi)
+
+            self.get_logger().info(
+                "MPC decision | "
+                f"pose=({x:.2f},{y:.2f},{yaw:.2f}) "
+                f"mode={'ordered' if self.wp_ordered_mode else 'nearest'} "
+                f"target_wp={selected_wp_id} (wp#{selected_wp_id + 1}) d={selected_wp_dist:.2f} "
+                f"active_wp={active_wp_id} wp=({active_wp.x:.2f},{active_wp.y:.2f}) "
+                f"wp_psi={active_wp.psi:.2f} wp_kappa={active_wp.kappa:.3f} wp_vref={active_wp.v_ref:.2f} "
+                f"errors=(e_y={e_y:.2f},e_psi={e_psi:.2f}) "
+                f"u_raw=(v={u[0]:.2f},delta={u[1]:.2f}) u_cmd=(v={speed_cmd:.2f},delta={steer_cmd:.2f})"
+            )
+
     def destroy_node(self) -> bool:
         stop_msg = AckermannDrive()
         stop_msg.speed = 0.0
         stop_msg.steering_angle = 0.0
-        self.command_publisher.publish(stop_msg)
+        try:
+            if rclpy.ok():
+                self.command_publisher.publish(stop_msg)
+        except Exception:
+            pass
         return super().destroy_node()
 
 
@@ -307,7 +441,11 @@ def main(args: list[str] | None = None) -> None:
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        try:
+            if rclpy.ok():
+                rclpy.shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
