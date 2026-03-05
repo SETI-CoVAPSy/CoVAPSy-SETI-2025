@@ -1,0 +1,26 @@
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ROS2 / colcon artifacts
+**/build/
+**/install/
+**/log/
+**/.colcon_install_layout
+**/COLCON_IGNORE
+
+# Runtime logs and generated data
+*.log
+Software/node_ros_2/race_DATA.csv
+
+# Webots generated editor/runtime artifacts
+*.wbproj
+Webots/**/worlds/.*.jpg
+
+# Generated optimizer build folder
+**/dynamic_my_optimizer/
+
+# Embedded external repository
+A-Nonlinear-Model-Predictive-Control-Strategy-for-Autonomous-Racing-of-Scale-Vehicles/

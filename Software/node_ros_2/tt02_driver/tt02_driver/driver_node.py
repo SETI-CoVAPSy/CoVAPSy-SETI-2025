@@ -3,6 +3,7 @@ Base ROS 2 driver node for TT-02 in Webots/Simulation or Hardware.
 """
 
 import math
+import os
 import rclpy
 import numpy as np
 from rclpy.time import Time
@@ -47,9 +48,11 @@ class TT02DriverNode(Node):
         super().__init__(node_name)
         self.verbose = verbose
         self._target = target
+        self.debug = os.getenv("TT02_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
 
         self.target_speed = 0.0     # m/s
         self.target_angle = 0.0     # degrees
+        self._update_counter = 0
 
         # === Odometry initialization ===
         self.x = 0.0
@@ -116,6 +119,11 @@ class TT02DriverNode(Node):
         )
 
         self.webots_driver = self.driver.get_driver()
+        try:
+            robot_name = self.webots_driver.getName()
+        except Exception:
+            robot_name = "<unknown>"
+        self.get_logger().info(f"Connected Webots robot: {robot_name}")
         self.webots_basicTimeStep = int(self.webots_driver.getBasicTimeStep())
         self.sensorTimeStep = 4 * self.webots_basicTimeStep
 
@@ -139,10 +147,16 @@ class TT02DriverNode(Node):
         self.target_angle = msg.steering_angle * 180.0 / 3.14159265358979
         self.target_speed = max(self.driver.SPEED_LIMIT_REVERSE, min(self.driver.SPEED_LIMIT_FORWARD, self.target_speed))
         self.target_angle = max(-self.driver.ANGLE_LIMIT_DEG, min(self.driver.ANGLE_LIMIT_DEG, self.target_angle))
+        if self.debug:
+            self.get_logger().info(
+                f"Received cmd speed={msg.speed:.3f}m/s steer={msg.steering_angle:.3f}rad | "
+                f"clamped speed={self.target_speed:.3f}m/s steer={self.target_angle:.3f}deg"
+            )
         
     def update(self) -> None:
         """Clock update function called periodically."""
         current_time = self.get_clock().now()
+        self._update_counter += 1
         if self._target == "hardware":
             dt = (current_time - self.last_time).nanoseconds / 1e9
         elif self._target == "simulation":
@@ -174,6 +188,16 @@ class TT02DriverNode(Node):
         self.publish_scan()
 
         self.publish_clock()
+
+        if self.debug and self._update_counter % 50 == 0:
+            current_speed = float("nan")
+            try:
+                current_speed = self.webots_driver.getCurrentSpeed()
+            except Exception:
+                pass
+            self.get_logger().info(
+                f"Loop dt={dt:.4f}s target_speed={self.target_speed:.3f}m/s target_angle={self.target_angle:.3f}deg current_speed={current_speed:.3f}km/h"
+            )
 
     def publish_odometry(self, time: Time) -> None:
         # 1. Broadcast Transform
@@ -273,7 +297,8 @@ class TT02DriverNode(Node):
 
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
-    node = TT02DriverNode("simulation", use_camera=True)
+    use_camera = os.getenv("TT02_USE_CAMERA", "0").strip().lower() in ("1", "true", "yes", "on")
+    node = TT02DriverNode("simulation", use_camera=use_camera)
     #rclpy.spin(node)
     try:
         node.run()
