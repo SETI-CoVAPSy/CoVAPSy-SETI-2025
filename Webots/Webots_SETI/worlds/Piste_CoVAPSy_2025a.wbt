@@ -3039,7 +3039,7 @@ TT02_2023b {
   translation -0.5 -2.5 0.0392898
   rotation 0 0 1 0.6546046938995747
   name "TT02_violette"
-  controller "<extern>"
+  controller "<none>"
   color 0.5 0 0.6
 }
 TT02_2023b {
@@ -3065,6 +3065,6 @@ TT02_2023b {
   translation -3 -1.3 0.0392898
   rotation 0 0 1 -2.8797956132800118
   name "TT02_jaune_python"
-  controller "controller_jaune"
+  controller "<extern>"
   color 0.69 0.7 0.2
 }

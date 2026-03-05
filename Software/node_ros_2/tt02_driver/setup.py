@@ -14,7 +14,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'numpy'],
     zip_safe=True,
     maintainer='val',
     maintainer_email='v.david76@live.com',
@@ -24,13 +24,17 @@ setup(
         'test': [
             'pytest',
         ],
+        'mpc': [
+            'scipy',
+            'osqp',
+        ],
     },
     entry_points={
         'console_scripts': [
             'driver = tt02_driver.driver_node:main',
             'pilot = tt02_driver.circuit_follower:main',
             'pilot_alt = tt02_driver.circuit_follower_alt:main',
-            'mpc = tt02_driver.MPC:main',
+            'mpc = MPC.ros2_mpc_node:main',
             'rl1_env = tt02_driver.rl1_env:main',
             'rl1_agent = tt02_driver.rl1_agent:main',
         ],
