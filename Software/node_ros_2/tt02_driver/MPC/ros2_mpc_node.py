@@ -176,11 +176,11 @@ class TT02MPCNode(Node):
         # from test_track.png
         self.declare_parameter(
             "waypoints_x",
-            [-2.5, -4.3, -4.3, -1.6, -0.58, 0.6, -0.4, -0.4, 0.86, 2.6, 3.61, 2.63, 3.55, 3.55, 1.6, 5.55, 5.55, -0.28, -2.27, -2.54],
+            [-4.3, -4.3, -1.6, -0.58, 0.6, -0.4, -0.4, 0.86, 2.6, 3.61, 2.63, 3.55, 3.55, 1.6, 5.55, 5.55, -0.28, -2.27, -2.54],
         )
         self.declare_parameter(
             "waypoints_y",
-            [-1.3, -1.6, -4.3, -4.3, -3.1, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
+            [-1.6, -4.3, -4.3, -3.1, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
         )
 
         self.control_period = float(self.get_parameter("control_period").value)
@@ -202,8 +202,8 @@ class TT02MPCNode(Node):
 
         self.model = BicycleModel(
             reference_path=self.reference_path,
-            length=0.257,
-            width=0.188,
+            length=0.257, #wheelbase of the TT02 in meters
+            width=0.188, #width of the TT02 in meters
             Ts=self.control_period,
         )
 

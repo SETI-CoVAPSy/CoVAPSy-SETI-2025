@@ -249,9 +249,11 @@ class SpatialBicycleModel(ABC):
         """
 
         # Model ellipsoid around the car
-        safety_margin = self.width / np.sqrt(2)
+        # safety_margin = self.width / np.sqrt(2)
 
-        return safety_margin
+        # return safety_margin
+    
+        return math.sqrt((self.length/2)**2 + (self.width/2)**2)
 
     def get_current_waypoint(self):
         """
@@ -407,6 +409,7 @@ class BicycleModel(SpatialBicycleModel):
 
         b_1 = np.array([0, 0])
         b_2 = np.array([0, delta_s])
+        #b_2 = np.array([0.0, (1.0 / self.length) * delta_s]) 
         b_3 = np.array([-1 / (v_ref ** 2) * delta_s, 0])
 
         f = np.array([0.0, 0.0, 1 / v_ref * delta_s])
