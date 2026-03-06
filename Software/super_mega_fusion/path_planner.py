@@ -414,6 +414,7 @@ def super_mega_fusion_path_planning(
     planning_commands: list[Command],
     opponent_collision_radius_m: float,
     trajectory_plan_length: int,
+    pixels_per_meter: float,
     estimated_positions_seti: Optional[list[Pose2D]] = None,
     estimated_positions_opponents: Optional[list[list[Pose2D]]] = None,
     max_iterations: int = 200_000,
@@ -541,7 +542,7 @@ def super_mega_fusion_path_planning(
         # ---- collision check: occupancy grid ----
         collision = False
         for p in global_samples:
-            px, py = pose_to_pixel(p, PIXELS_PER_METER, w, h)
+            px, py = pose_to_pixel(p, pixels_per_meter, w, h)
             if px < 0 or px >= w or py < 0 or py >= h:
                 collision = True
                 break
@@ -593,6 +594,7 @@ def draw_figure(
     misc_scatter_points: Optional[list[tuple[int, int]]] = None,
     flow_field: Optional[FlowField] = None,
     do_draw_origin: bool = True,
+    scale_icons: float = 1.0,
     title: str = "Full picture",
 ) -> None:
     """Draw a figure showing the occupancy grid and trajectories."""
@@ -644,8 +646,8 @@ def draw_figure(
         forward_col, forward_row = flow_field
         skip = max(1, min(h, w) // 30)  # adjust density of quiver arrows
         Y, X = np.mgrid[0:h:skip, 0:w:skip]
-        U = forward_col[::skip, ::skip]
-        V = forward_row[::skip, ::skip]
+        U = forward_col[::skip, ::skip]*scale_icons
+        V = forward_row[::skip, ::skip]*scale_icons
         plt.quiver(
             X,
             Y,
@@ -655,7 +657,7 @@ def draw_figure(
             angles="xy",
             scale_units="xy",
             scale=1,
-            width=0.003,
+            width=0.003*scale_icons/2,
             alpha=0.3,
             label="Flow Field",
         )
@@ -682,15 +684,15 @@ def draw_figure(
 
     def plot_arrow(pose: Pose2D, color: str, label: Optional[str] = None) -> None:
         x_px, y_px = pose_to_pixel_float(pose, pixels_per_meter, w, h)
-        dx = np.cos(pose.theta) * 1.0  # arrow length in pixels
-        dy = -np.sin(pose.theta) * 1.0
+        dx = np.cos(pose.theta) * 1.0 * scale_icons  # arrow length in pixels
+        dy = -np.sin(pose.theta) * 1.0 * scale_icons
         plt.arrow(
             x_px,
             y_px,
             dx,
             dy,
-            head_width=1.0,
-            head_length=1.2,
+            head_width=1.0 * scale_icons,
+            head_length=1.2 * scale_icons,
             fc=color,
             ec=color,
             alpha=0.7,
@@ -747,7 +749,7 @@ def draw_figure(
                 c="red",
                 linestyle=":",
                 alpha=0.5,
-                label=f"Opponent {j+1} Path",
+                label="Opponent paths" if j == 0 else None,  # label only the first for legend clarity
             )
 
             # Also scatter disks of collision_radius_m, with color viridis based on
@@ -759,7 +761,7 @@ def draw_figure(
                         collision_radius_m * pixels_per_meter,
                         color=viridis_colors[i],
                         alpha=0.3,
-                        label=f"Opponent {j+1} Collision Area" if i == 0 else None,
+                        label="Opponent collision" if (j, i) == (0, 0) else None,
                     )
                     plt.gca().add_patch(circle)
 
@@ -768,7 +770,7 @@ def draw_figure(
         plot_arrow(start_position_seti, "blue", label="SETI Start")
     if start_positions_opponents:
         for j, start_pos in enumerate(start_positions_opponents):
-            plot_arrow(start_pos, "red", label=f"Opponent {j+1} Start")
+            plot_arrow(start_pos, "orange", label="Opponents start" if j == 0 else None)
     # Plot target if given (plus marker rather than arrow)
     if target_pose:
         tx, ty = pose_to_pixel_float(target_pose, pixels_per_meter, w, h)
@@ -921,9 +923,10 @@ if __name__ == "__main__":
         position_start_seti,
         PLANNING_COMMANDS,
         OPPONENT_COLLISION_RADIUS_M,
+        TRAJECTORY_PLAN_LENGTH,
+        PIXELS_PER_METER,
         estimated_positions_seti=positions_seti,
         estimated_positions_opponents=positions_opponents,
-        trajectory_plan_length=TRAJECTORY_PLAN_LENGTH,
         max_iterations=MAX_ITERATIONS,
         backtrack_count=BACKTRACK_COUNT,
         closest_path_bias_strength=CLOSEST_PATH_BIAS_STRENGTH,

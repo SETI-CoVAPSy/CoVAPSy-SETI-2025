@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
     CAM_BAND_Y_MIN = 20
     CAM_BAND_Y_MAX = 25
-    CAM_FOV_DEG = 43
+    CAM_FOV_DEG = 48
     # CAM_FOV_DEG = np.rad2deg(0.785398)  # Field of view of the camera (degrees)
     LIDAR_FOV_DEG = 360  # Field of view of the LIDAR (degrees), centered on the front of the car, so e.g. 270 means 135 degrees to the left and 135 degrees to the right. Note: this is not necessarily the same as the camera FoV, which may be wider or narrower.
 
@@ -319,11 +319,10 @@ if __name__ == "__main__":
     )
     if True:
         # Display only
-        plt.scatter(lidar_angles, lidar_ranges_in_fov, c=lidar_labels, cmap="tab10")
-        plt.title("LiDAR Ranges with Labels")
+        plt.scatter(lidar_angles, lidar_ranges_in_fov, c='gray')
+        plt.title("LiDAR Ranges in camera FoV")
         plt.xlabel("Angle (degrees)")
         plt.ylabel("Range (meters)")
-        plt.colorbar(label="Label")
         plt.show()
 
     # Test get_opponent_positions
@@ -376,7 +375,7 @@ if __name__ == "__main__":
                 marker="x",
                 label="Opponent Positions",
             )
-        plt.title("LiDAR Ranges with Labels and Opponent Positions")
+        plt.title("Labelled LiDAR Points in (X,Y) plane and opponent positions")
         plt.xlabel("X (meters)")
         plt.ylabel("Y (meters)")
         plt.legend()
