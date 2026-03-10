@@ -14,7 +14,13 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
-    install_requires=['setuptools', 'numpy'],
+    install_requires=[
+        'setuptools',
+        'numpy',
+        'scipy',
+        'matplotlib',
+        'osqp',
+    ],
     zip_safe=True,
     maintainer='val',
     maintainer_email='v.david76@live.com',
@@ -26,6 +32,7 @@ setup(
         ],
         'mpc': [
             'scipy',
+            'matplotlib',
             'osqp',
         ],
     },

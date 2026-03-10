@@ -65,6 +65,12 @@ class MPC:
         # Counter for old control signals in case of infeasible problem
         self.infeasibility_counter = 0
 
+        # Log throttling counters to avoid flooding terminal on repeated
+        # infeasible/suboptimal solver outcomes.
+        self._fallback_count = 0
+        self._suboptimal_count = 0
+        self._status_log_every = 25
+
         # Current control signals
         self.current_control = np.zeros((self.nu*self.N))
         # Last applied control [v, delta] used as robust fallback.
@@ -78,6 +84,32 @@ class MPC:
         if np.all(np.isfinite(self.last_applied_control)):
             return np.array(self.last_applied_control, dtype=float)
         return np.array([0.0, 0.0])
+
+    def _log_fallback(self, status_raw: str):
+        """Log fallback events sparsely to keep output readable."""
+        self._fallback_count += 1
+        self._suboptimal_count = 0
+        if self._fallback_count == 1 or self._fallback_count % self._status_log_every == 0:
+            print(
+                f"OSQP failed with status='{status_raw}'. Using fallback control "
+                f"(count={self._fallback_count})."
+            )
+
+    def _log_suboptimal(self, status_raw: str):
+        """Log suboptimal events sparsely to avoid noisy repeated warnings."""
+        self._suboptimal_count += 1
+        if self._suboptimal_count == 1 or self._suboptimal_count % self._status_log_every == 0:
+            print(
+                f"OSQP status='{status_raw}', using best available iterate "
+                f"(count={self._suboptimal_count})."
+            )
+
+    def _log_recovery_if_needed(self):
+        """Emit a compact recovery message after prolonged degraded operation."""
+        if self._fallback_count >= self._status_log_every:
+            print(f"OSQP recovered after {self._fallback_count} fallback step(s).")
+        self._fallback_count = 0
+        self._suboptimal_count = 0
 
     def _init_problem(self):
         """
@@ -209,14 +241,14 @@ class MPC:
         status = status_raw.lower()
         allow_suboptimal = "maximum iterations reached" in status
         if dec.x is None or (("solved" not in status) and not allow_suboptimal):
-            print(f"OSQP failed with status='{status_raw}'. Using fallback control.")
+            self._log_fallback(status_raw)
             u = self._get_fallback_control()
             self.infeasibility_counter += 1
             if self.infeasibility_counter >= self.N:
                 self.infeasibility_counter = self.N - 1
             return u
         if allow_suboptimal:
-            print(f"OSQP status='{status_raw}', using best available iterate.")
+            self._log_suboptimal(status_raw)
 
         try:
             # Get control signals
@@ -253,10 +285,11 @@ class MPC:
 
             # if problem solved, reset infeasibility counter
             self.infeasibility_counter = 0
+            self._log_recovery_if_needed()
 
         except Exception as exc:
 
-            print(f"Infeasible/invalid MPC solution ({exc}). Previously predicted control signal used!")
+            self._log_fallback(f"invalid solution ({exc})")
             u = self._get_fallback_control()
 
             # increase infeasibility counter
