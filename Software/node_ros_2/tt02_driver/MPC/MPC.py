@@ -78,6 +78,9 @@ class MPC:
 
         # Initialize Optimization Problem
         self.optimizer = osqp.OSQP()
+        self._problem_initialized = False
+        self.P = sparse.block_diag([sparse.kron(sparse.eye(self.N), self.Q), self.QN,
+             sparse.kron(sparse.eye(self.N), self.R)], format='csc')
 
     def _get_fallback_control(self):
         """Return a safe fallback control when optimization is invalid."""
@@ -136,8 +139,12 @@ class MPC:
         # Dynamic input constraints
         umax_dyn = np.kron(np.ones(self.N), umax)
         # Get curvature predictions from previous control signals
-        kappa_pred = np.tan(np.array(self.current_control[3::] +
-                                     self.current_control[-1:])) / self.model.length
+        deltas = np.array(self.current_control[1::2])
+        if len(deltas) > 1:
+            deltas_pred = np.append(deltas[1:], deltas[-1])
+        else:
+            deltas_pred = deltas
+        kappa_pred = np.tan(deltas_pred) / self.model.length
 
         # Iterate over horizon
         for n in range(self.N):
@@ -163,14 +170,19 @@ class MPC:
             # Constrain maximum speed based on predicted car curvature
             vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred[n]) + 1e-12))
             if vmax_dyn < umax_dyn[self.nu*n]:
-                umax_dyn[self.nu*n] = vmax_dyn
+                # fonction pour limiter vmax_dyn avec la vitesse minimale (index 0 de umin)
+                umax_dyn[self.nu*n] = max(vmax_dyn, umin[0])
 
         # Compute dynamic constraints on e_y
+        lateral_margin = self.model.safety_margin
         ub, lb, _ = self.model.reference_path.update_path_constraints(
-                    self.model.wp_id+1, self.N, 2*self.model.safety_margin,
-            self.model.safety_margin)
-        xmin_dyn[0] = self.model.spatial_state.e_y
-        xmax_dyn[0] = self.model.spatial_state.e_y
+                self.model.wp_id+1, self.N, lateral_margin, lateral_margin)
+
+        # Ensure initial state feasibility (k=0) without hacking the whole horizon
+        # If current state is out of bounds, relax ONLY the first step constraint.
+        if self.model.spatial_state.e_y > ub[0]: ub[0] = self.model.spatial_state.e_y + 1e-4
+        if self.model.spatial_state.e_y < lb[0]: lb[0] = self.model.spatial_state.e_y - 1e-4
+
         xmin_dyn[self.nx::self.nx] = lb
         xmax_dyn[self.nx::self.nx] = ub
 
@@ -200,16 +212,17 @@ class MPC:
         u = np.hstack([ueq, uineq])
 
         # Set cost matrices
-        P = sparse.block_diag([sparse.kron(sparse.eye(self.N), self.Q), self.QN,
-             sparse.kron(sparse.eye(self.N), self.R)], format='csc')
         q = np.hstack(
             [-np.tile(np.diag(self.Q.A), self.N) * xr[:-self.nx],
              -self.QN.dot(xr[-self.nx:]),
              -np.tile(np.diag(self.R.A), self.N) * ur])
 
-        # Initialize optimizer
-        self.optimizer = osqp.OSQP()
-        self.optimizer.setup(P=P, q=q, A=A, l=l, u=u, **self.solver_settings)
+        # Initialize or update optimizer
+        if not self._problem_initialized:
+            self.optimizer.setup(P=self.P, q=q, A=A, l=l, u=u, **self.solver_settings)
+            self._problem_initialized = True
+        else:
+            self.optimizer.update(l=l, u=u, q=q, Ax=A.data)
 
     def get_control(self):
         """
@@ -335,4 +348,3 @@ class MPC:
         if self.current_prediction is not None:
             plt.scatter(self.current_prediction[0], self.current_prediction[1],
                     c=PREDICTION, s=30)
-

@@ -53,7 +53,15 @@ def generate_launch_description():
         package="tt02_driver",
         executable="mpc",
         name="tt02_mpc",
-        parameters=[sim_time_arg],
+        parameters=[
+            sim_time_arg,
+            {"debug_decisions": True},
+            {"wp_reached_distance": 0.6},
+            {"q_ey": 20.0},
+            {"r_steer": 0.05},
+            {"wp_pass_margin": 0.0},
+            {"max_steering_angle_deg": 20.0},
+        ],
         output="screen",
         condition=IfCondition(LaunchConfiguration("run_mpc")),
     )

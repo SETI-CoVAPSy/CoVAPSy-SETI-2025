@@ -7,8 +7,8 @@ EXTERNPROTO "../protos/TT02_2023b.proto"
 WorldInfo {
 }
 Viewpoint {
-  orientation -0.1463164982380554 0.48720632841659584 0.860942202412086 1.1854244498066586
-  position -6.2948736407249415 -8.30827324455753 4.870676793864057
+  orientation -0.294532029228292 0.44842465902140227 0.8438994068846142 1.6782959997418514
+  position -5.137053442146117 -5.576907286328199 4.317852463298556
   followType "Mounted Shot"
 }
 TexturedBackground {
@@ -1021,33 +1021,6 @@ DEF piste_exterieure Group {
       }
     }
     Solid {
-      translation -4.5 -1.5 0.185
-      rotation 0 0 1 -1.5708053071795867
-      children [
-        Shape {
-          appearance Appearance {
-            material Material {
-              ambientIntensity 0.5
-              diffuseColor 0 0.6 0
-              emissiveColor 0 0.6 0
-              specularColor 0 0.6 0
-            }
-          }
-          geometry Mesh {
-            url [
-              "ImageToStl_virage.obj"
-            ]
-          }
-        }
-      ]
-      name "virage_vert(23)"
-      boundingObject Mesh {
-        url [
-          "ImageToStl_virage.obj"
-        ]
-      }
-    }
-    Solid {
       translation -2.5 3.5 0.185
       rotation 0 0 1 -1.5708053071795867
       children [
@@ -1419,6 +1392,33 @@ DEF piste_exterieure Group {
         }
       ]
       name "virage_vert(24)"
+      boundingObject Mesh {
+        url [
+          "ImageToStl_virage.obj"
+        ]
+      }
+    }
+    Solid {
+      translation -4.49 -1.49 0.185
+      rotation 0 0 1 -1.5708053071795867
+      children [
+        Shape {
+          appearance Appearance {
+            material Material {
+              ambientIntensity 0.5
+              diffuseColor 0 0.6 0
+              emissiveColor 0 0.6 0
+              specularColor 0 0.6 0
+            }
+          }
+          geometry Mesh {
+            url [
+              "ImageToStl_virage.obj"
+            ]
+          }
+        }
+      ]
+      name "virage_vert(23)"
       boundingObject Mesh {
         url [
           "ImageToStl_virage.obj"
@@ -3067,4 +3067,5 @@ TT02_2023b {
   name "TT02_jaune_python"
   controller "<extern>"
   color 0.69 0.7 0.2
+  supervisor TRUE
 }

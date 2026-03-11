@@ -50,19 +50,24 @@ class RosReferencePath:
         wp_x: list[float],
         wp_y: list[float],
         v_ref: float,
-        track_half_width: float,
+        wp_lb: list[float] | None = None,
+        wp_ub: list[float] | None = None,
         circular: bool = True,
     ) -> None:
         if len(wp_x) != len(wp_y):
             raise ValueError("waypoints_x and waypoints_y must have same length")
         if len(wp_x) < 3:
             raise ValueError("at least 3 waypoints are required")
+        if wp_lb is not None and len(wp_lb) != len(wp_x):
+            raise ValueError("waypoints_lb must match waypoints_x length")
+        if wp_ub is not None and len(wp_ub) != len(wp_x):
+            raise ValueError("waypoints_ub must match waypoints_x length")
 
         self.circular = circular
         self._eps = 1e-9
 
         waypoints_xy = list(zip(wp_x, wp_y))
-        self.waypoints = self._build_waypoints(waypoints_xy, v_ref, track_half_width)
+        self.waypoints = self._build_waypoints(waypoints_xy, v_ref, wp_lb, wp_ub)
         self.n_waypoints = len(self.waypoints)
         self.length, self.segment_lengths = self._compute_length()
         self.cumulative_lengths = np.cumsum(self.segment_lengths)
@@ -76,7 +81,8 @@ class RosReferencePath:
         self,
         points: list[tuple[float, float]],
         v_ref: float,
-        track_half_width: float,
+        wp_lb: list[float] | None,
+        wp_ub: list[float] | None,
     ) -> list[MPCWaypoint]:
         waypoints: list[MPCWaypoint] = []
         n_points = len(points)
@@ -99,6 +105,18 @@ class RosReferencePath:
                 angle_diff = (heading - prev_heading + math.pi) % (2.0 * math.pi) - math.pi
                 kappa = angle_diff / seg_len
 
+            if wp_lb is not None and wp_ub is not None:
+                lb_val = float(wp_lb[i])
+                ub_val = float(wp_ub[i])
+                if ub_val < lb_val:
+                    lb_val, ub_val = ub_val, lb_val
+            else:
+                # Adaptive fallback when no lateral bounds are provided:
+                # Use a fixed default corridor width (e.g. 1.0m half-width -> 2m track)
+                # This avoids collapsing the track if waypoints are dense.
+                lb_val = -1.0
+                ub_val = 1.0
+
             waypoints.append(
                 MPCWaypoint(
                     x=float(x),
@@ -106,8 +124,8 @@ class RosReferencePath:
                     psi=float(heading),
                     kappa=float(kappa),
                     v_ref=float(v_ref),
-                    lb=float(-track_half_width),
-                    ub=float(track_half_width),
+                    lb=lb_val,
+                    ub=ub_val,
                 )
             )
 
@@ -142,11 +160,6 @@ class RosReferencePath:
             ub_i = wp.ub - left_margin
             lb_i = wp.lb + right_margin
 
-            if ub_i < lb_i:
-                center = 0.5 * (wp.ub + wp.lb)
-                ub_i = center
-                lb_i = center
-
             ub[i] = ub_i
             lb[i] = lb_i
 
@@ -170,8 +183,8 @@ class TT02MPCNode(Node):
         self.declare_parameter("control_period", 0.05)
         self.declare_parameter("horizon", 20)
         self.declare_parameter("reference_speed", 0.8)
-        self.declare_parameter("track_half_width", 0.35)
         self.declare_parameter("ay_max", 3.0)
+        self.declare_parameter("max_steering_angle_deg", GilbertDriverGeneric.ANGLE_LIMIT_DEG)
         self.declare_parameter("q_ey", 1.0)
         self.declare_parameter("q_epsi", 0.7)
         self.declare_parameter("q_t", 0.0)
@@ -184,7 +197,8 @@ class TT02MPCNode(Node):
         self.declare_parameter("osqp_eps_abs", 1e-3)
         self.declare_parameter("osqp_eps_rel", 1e-3)
         self.declare_parameter("wp_ordered_mode", True)
-        # -1 means auto-select nearest waypoint at startup.
+        # -1 selects nearest waypoint at startup, then keeps strict ordered
+        # traversal from that point.
         self.declare_parameter("wp_ordered_start_index", -1)
         self.declare_parameter("wp_reached_distance", 0.45)
         self.declare_parameter("wp_pass_margin", 0.05)
@@ -193,20 +207,33 @@ class TT02MPCNode(Node):
 
         # Example waypoints for a simple track (can be overridden by parameters)
         # from test_track.png
+        # self.declare_parameter(
+        #     "waypoints_x",
+        #     [-4.3, -4.3, -1.6, -0.58, 0.6, -0.4, -0.4, 0.86, 2.6, 3.61, 2.63, 3.55, 3.55, 1.6, 5.55, 5.55, -0.28, -2.27, -2.54],
+        # )
+        # self.declare_parameter(
+        #     "waypoints_y",
+        #     [-1.6, -4.3, -4.3, -3.44, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
+        # )
+
+        #more affine waypoints
+
         self.declare_parameter(
             "waypoints_x",
-            [-4.3, -4.3, -1.6, -0.58, 0.6, -0.4, -0.4, 0.86, 2.6, 3.61, 2.63, 3.55, 3.55, 1.6, 5.55, 5.55, -0.28, -2.27, -2.54],
+            [-3.67578, -4.25027, -4.00572, -2.98572, -1.75572, -0.71572, 0.19428, -0.07572, -0.17572, 0.877861, 2.00204, 2.38204, 3.18204, 2.82204, 3.20204, 2.95459, 2.07791, 1.81791, 2.34711, 4.33711, 5.13507, 5.6936, 5.6936, 5.0386, 3.3986, 0.0886, -2.07502, -2.28502, -3.84042],
         )
         self.declare_parameter(
             "waypoints_y",
-            [-1.6, -4.3, -4.3, -3.44, -1.5, -0.2, 1.3, 2.40, 3.53, 2.54, 0.51, -1.93, -3.53, -4.5, -5.45, 5.37, 5.37, 3.41, -1.25],
+            [-1.79182, -2.97463, -3.97463, -4.20463, -3.96463, -2.88463, -1.76463, -0.45463, 0.83537, 1.88882, 3.01298, 3.16298, 2.67802, 0.58802, -1.90198, -3.12453, -4.00121, -4.47121, -5.18839, -5.18839, -4.99043, -3.2919, 3.8681, 5.00256, 5.16256, 5.16256, 2.99909, -0.36091, -1.81742],
         )
+        self.declare_parameter("waypoints_lb", [])
+        self.declare_parameter("waypoints_ub", [])
 
         self.control_period = float(self.get_parameter("control_period").value)
         self.horizon = int(self.get_parameter("horizon").value)
         self.ref_speed = float(self.get_parameter("reference_speed").value)
-        self.track_half_width = float(self.get_parameter("track_half_width").value)
         self.ay_max = float(self.get_parameter("ay_max").value)
+        self.max_steer_deg = abs(float(self.get_parameter("max_steering_angle_deg").value))
         q_ey = float(self.get_parameter("q_ey").value)
         q_epsi = float(self.get_parameter("q_epsi").value)
         q_t = float(self.get_parameter("q_t").value)
@@ -232,12 +259,31 @@ class TT02MPCNode(Node):
 
         wp_x = [float(v) for v in self.get_parameter("waypoints_x").value]
         wp_y = [float(v) for v in self.get_parameter("waypoints_y").value]
+        wp_lb_raw = [float(v) for v in self.get_parameter("waypoints_lb").value]
+        wp_ub_raw = [float(v) for v in self.get_parameter("waypoints_ub").value]
+
+        wp_lb: list[float] | None = None
+        wp_ub: list[float] | None = None
+        if wp_lb_raw or wp_ub_raw:
+            if len(wp_lb_raw) != len(wp_x) or len(wp_ub_raw) != len(wp_x):
+                raise ValueError(
+                    "waypoints_lb and waypoints_ub must be either empty or have the same "
+                    "length as waypoints_x/waypoints_y"
+                )
+            wp_lb = wp_lb_raw
+            wp_ub = wp_ub_raw
+        else:
+            self.get_logger().warn(
+                "No waypoints_lb/waypoints_ub provided; using adaptive lateral bounds "
+                "derived from waypoint spacing."
+            )
 
         self.reference_path = RosReferencePath(
             wp_x=wp_x,
             wp_y=wp_y,
             v_ref=self.ref_speed,
-            track_half_width=self.track_half_width,
+            wp_lb=wp_lb,
+            wp_ub=wp_ub,
             circular=True,
         )
 
@@ -249,7 +295,7 @@ class TT02MPCNode(Node):
         )
         self.model.external_waypoint_sync = True
 
-        self.max_steer_rad = math.radians(GilbertDriverGeneric.ANGLE_LIMIT_DEG)
+        self.max_steer_rad = math.radians(self.max_steer_deg)
         self.max_speed = float(GilbertDriverGeneric.SPEED_LIMIT_FORWARD)
         self.min_speed = float(GilbertDriverGeneric.SPEED_LIMIT_REVERSE)
 
@@ -298,6 +344,9 @@ class TT02MPCNode(Node):
             "MPC node started: publishing Ackermann on /car/command from /odom feedback"
         )
         self.get_logger().info(
+            f"MPC limits: ay_max={self.ay_max:.3f} m/s^2, max_steer={self.max_steer_deg:.2f} deg"
+        )
+        self.get_logger().info(
             f"MPC debug_decisions={self.debug_decisions} every={self.debug_decisions_every} ticks"
         )
 
@@ -321,17 +370,13 @@ class TT02MPCNode(Node):
         nearest_wp_id = int(np.argmin(distances))
         return nearest_wp_id, float(distances[nearest_wp_id])
 
-    @staticmethod
-    def _forward_steps(start_id: int, end_id: int, n_wp: int) -> int:
-        return (end_id - start_id) % n_wp
-
     def _sync_model_with_odometry(self) -> tuple[int, float]:
         assert self.latest_pose is not None
         x, y, yaw = self.latest_pose
 
         if self.wp_ordered_mode:
             n_wp = len(self.reference_path.waypoints)
-            nearest_wp_id, nearest_wp_dist = self._find_nearest_waypoint_index(x, y)
+            nearest_wp_id, _ = self._find_nearest_waypoint_index(x, y)
 
             if self._ordered_wp_id is None:
                 if 0 <= self.wp_ordered_start_index < n_wp:
@@ -339,26 +384,24 @@ class TT02MPCNode(Node):
                 else:
                     self._ordered_wp_id = nearest_wp_id
 
-            # If ordered target drifts too far behind while another waypoint in
-            # front is clearly nearest, resync once to avoid chasing an old wp.
-            forward_to_nearest = self._forward_steps(self._ordered_wp_id, nearest_wp_id, n_wp)
-            backward_to_nearest = self._forward_steps(nearest_wp_id, self._ordered_wp_id, n_wp)
-            should_catch_up = (
-                0 < forward_to_nearest <= backward_to_nearest
-                and nearest_wp_dist + self.wp_pass_margin < self._waypoint_distance(self._ordered_wp_id, x, y)
-            )
-            if should_catch_up:
-                self._ordered_wp_id = nearest_wp_id
-
             selected_wp_id = self._ordered_wp_id
             selected_wp_dist = self._waypoint_distance(selected_wp_id, x, y)
 
-            # Advance in strict order once the current target is reached/passed.
-            next_wp_id = (selected_wp_id + 1) % n_wp
-            next_wp_dist = self._waypoint_distance(next_wp_id, x, y)
-            reached_current = selected_wp_dist <= self.wp_reached_distance
-            passed_current = next_wp_dist + self.wp_pass_margin < selected_wp_dist
-            if reached_current or passed_current:
+            # Strict ordered traversal with robust progression:
+            # - advance when entering waypoint acceptance radius
+            # - also advance if next waypoint is clearly closer (current waypoint
+            #   likely missed/passed), which avoids orbiting around one target.
+            reached_radius = self.wp_reached_distance + self.wp_pass_margin
+            for _ in range(n_wp):
+                next_wp_id = (selected_wp_id + 1) % n_wp
+                next_wp_dist = self._waypoint_distance(next_wp_id, x, y)
+
+                reached_by_radius = selected_wp_dist <= reached_radius
+                passed_current_wp = next_wp_dist + self.wp_pass_margin < selected_wp_dist
+
+                if not (reached_by_radius or passed_current_wp):
+                    break
+
                 selected_wp_id = next_wp_id
                 selected_wp_dist = next_wp_dist
 

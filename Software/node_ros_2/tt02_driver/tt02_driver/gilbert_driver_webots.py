@@ -12,6 +12,7 @@ Driver basé sur l'implémentation décrite ci-dessus pour le projet CoVAPSy.
 """
 
 from vehicle import Driver as WebotsDriver
+import math
 
 from typing import Literal
 from typing_extensions import override
@@ -88,7 +89,7 @@ class GilbertDriverWebots(GilbertDriverGeneric):
         """Send set speed and angle to the Webots controller. Will use internal state."""
         if self._driver is None:
             raise RuntimeError("Driver not opened. Call open() before sending commands.")
-        self._driver.setSteeringAngle(self.angle_deg * 3.14/180 * self.STEERING_DIRECTION)
+        self._driver.setSteeringAngle(math.radians(self.angle_deg) * self.STEERING_DIRECTION)
         self._driver.setCruisingSpeed(self.speed_mps * 3.6)
 
         if self._verbose:

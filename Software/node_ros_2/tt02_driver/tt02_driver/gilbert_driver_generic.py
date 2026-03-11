@@ -14,7 +14,7 @@ class GilbertDriverGeneric(ABC):
     PWM_PERIOD_US: int = 20_000  # PWM period (in microseconds)
     SPEED_LIMIT_FORWARD: float = 2.0  # Speed limit for our application (m/s)
     SPEED_LIMIT_REVERSE: float = -2.0  # Reverse speed limit (m/s)
-    ANGLE_LIMIT_DEG: float = 22.0  # Maximum steering angle (degrees)
+    ANGLE_LIMIT_DEG: float = 18.0  # Maximum steering angle (degrees)
 
     CAMERA_FOV_DEG: float = 120.0 # FoV of the camera (degrees)
 

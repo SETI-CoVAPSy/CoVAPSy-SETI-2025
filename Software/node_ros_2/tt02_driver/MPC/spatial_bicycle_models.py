@@ -248,11 +248,6 @@ class SpatialBicycleModel(ABC):
         Compute safety margin for car if modeled by its center of gravity.
         """
 
-        # Model ellipsoid around the car
-        # safety_margin = self.width / np.sqrt(2)
-
-        # return safety_margin
-    
         return math.sqrt((self.length/2)**2 + (self.width/2)**2)
 
     def get_current_waypoint(self):
@@ -408,8 +403,7 @@ class BicycleModel(SpatialBicycleModel):
         a_3 = np.array([-kappa_ref / v_ref * delta_s, 0, 1])
 
         b_1 = np.array([0, 0])
-        b_2 = np.array([0, delta_s])
-        #b_2 = np.array([0.0, (1.0 / self.length) * delta_s]) 
+        b_2 = np.array([0.0, (1.0 / self.length) * delta_s])
         b_3 = np.array([-1 / (v_ref ** 2) * delta_s, 0])
 
         f = np.array([0.0, 0.0, 1 / v_ref * delta_s])

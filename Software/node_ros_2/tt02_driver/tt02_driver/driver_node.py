@@ -53,11 +53,13 @@ class TT02DriverNode(Node):
         self.target_speed = 0.0     # m/s
         self.target_angle = 0.0     # degrees
         self._update_counter = 0
+        self._simulation_ended = False
 
         # === Odometry initialization ===
         self.x = -3.0
         self.y = -1.3
-        self.theta = -2.8798
+        # Must match TT02_jaune_python spawn yaw in Webots world.
+        self.theta = -2.8797956132800118
         self.last_time = self.get_clock().now()
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -134,7 +136,7 @@ class TT02DriverNode(Node):
 
         self.lidar_nb_rays = self.webots_lidar.getHorizontalResolution()
         self.lidar_fov = self.webots_lidar.getFov()
-        self.lidar_range_min = 0.05  # Minimum range in meters
+        self.lidar_range_min = 0.01  # Minimum range in meters
         self.lidar_range_max = self.webots_lidar.getMaxRange()
         self.angle_min = -math.pi
         self.angle_max = math.pi
@@ -144,7 +146,8 @@ class TT02DriverNode(Node):
     def callback_command(self, msg: AckermannDrive) -> None:
         """Callback from command topic."""
         self.target_speed = msg.speed
-        self.target_angle = msg.steering_angle * 180.0 / 3.14159265358979
+        # AckermannDrive.steering_angle is in radians; low-level driver expects degrees.
+        self.target_angle = math.degrees(msg.steering_angle)
         self.target_speed = max(self.driver.SPEED_LIMIT_REVERSE, min(self.driver.SPEED_LIMIT_FORWARD, self.target_speed))
         self.target_angle = max(-self.driver.ANGLE_LIMIT_DEG, min(self.driver.ANGLE_LIMIT_DEG, self.target_angle))
         if self.debug:
@@ -166,19 +169,30 @@ class TT02DriverNode(Node):
             if step_result == -1:
                 # Webots simulation ended (window closed)
                 self.get_logger().warn("Simulation ended.")
-                rclpy.shutdown()
+                self._simulation_ended = True
                 return
 
         
-        # --- Odometry Calculation (Dead Reckoning) ---
-        v = self.target_speed
-        alpha = self.target_angle * math.pi / 180.0
-        L = 0.257  # from tt02 proto file
-
-        # Ackermann kinematic model
-        self.x += v * math.cos(self.theta) * dt
-        self.y += v * math.sin(self.theta) * dt
-        self.theta += self.k * (v / L) * math.tan(alpha) * dt
+        # --- Odometry Calculation (Ground Truth from Webots) ---
+        robot_node = self.webots_driver.getSelf()
+        current_translation = robot_node.getField("translation").getSFVec3f()
+        current_rotation = robot_node.getField("rotation").getSFRotation()
+        
+        self.x = current_translation[0]
+        self.y = current_translation[1]
+        
+        # Convert axis-angle rotation to yaw
+        axis = np.array(current_rotation[:3])
+        angle = current_rotation[3]
+        q = Quaternion()
+        q.x = axis[0] * math.sin(angle / 2)
+        q.y = axis[1] * math.sin(angle / 2)
+        q.z = axis[2] * math.sin(angle / 2)
+        q.w = math.cos(angle / 2)
+        # Standard Z-axis yaw calculation from quaternion
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        self.theta = math.atan2(siny_cosp, cosy_cosp)
 
         self.publish_odometry(current_time)
         self.last_time = current_time
@@ -286,8 +300,10 @@ class TT02DriverNode(Node):
         self.publisher.publish(msg)
     
     def run(self):
-        while rclpy.ok():
+        while rclpy.ok() and not self._simulation_ended:
             self.update()
+            if self._simulation_ended or not rclpy.ok():
+                break
             rclpy.spin_once(self, timeout_sec=0)
 
     @override
@@ -306,7 +322,8 @@ def main(args: list[str] | None = None):
         pass
 
     node.destroy_node()
-    rclpy.shutdown()
+    if rclpy.ok():
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
