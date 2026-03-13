@@ -403,7 +403,8 @@ class BicycleModel(SpatialBicycleModel):
         a_3 = np.array([-kappa_ref / v_ref * delta_s, 0, 1])
 
         b_1 = np.array([0, 0])
-        b_2 = np.array([0.0, (1.0 / self.length) * delta_s])
+        # Corrected: u[1] represents curvature (tan(delta)/L), so sensitivity is 1.0 * delta_s, not 1/L
+        b_2 = np.array([0.0, delta_s])
         b_3 = np.array([-1 / (v_ref ** 2) * delta_s, 0])
 
         f = np.array([0.0, 0.0, 1 / v_ref * delta_s])
