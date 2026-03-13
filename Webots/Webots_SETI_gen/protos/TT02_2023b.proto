@@ -12,6 +12,7 @@ PROTO TT02_2023b [
   field MFString   controllerArgs  []                      # Is `Robot.controllerArgs`.
   field SFString   window          "<generic>"             # Is `Robot.window`.
   field SFBool     synchronization TRUE                    # Is `Robot.synchronization`.
+  field SFBool     supervisor      FALSE                   # Is `Robot.supervisor`.
   field SFColor    color           0.69 0.0 1.0            # Is `Material.diffuseColor`.            
   field SFInt32    lidarHorizontalResolution 360           # Is `Lidar.HorizontalResolution`.
   field SFFloat    lidarMinRange             0.1           # Is `Lidar.minRange`.
@@ -31,6 +32,7 @@ PROTO TT02_2023b [
     controllerArgs IS controllerArgs
     window IS window
     synchronization IS synchronization
+    supervisor IS supervisor
     trackFront                     0.15
     trackRear                      0.15
     wheelbase                      0.257

@@ -12,6 +12,7 @@ import rclpy
 from ackermann_msgs.msg import AckermannDrive
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from sensor_msgs.msg import LaserScan
 
 from tt02_driver.gilbert_driver_generic import GilbertDriverGeneric
 
@@ -112,10 +113,10 @@ class RosReferencePath:
                     lb_val, ub_val = ub_val, lb_val
             else:
                 # Adaptive fallback when no lateral bounds are provided:
-                # Use a fixed default corridor width (e.g. 1.0m half-width -> 2m track)
-                # This avoids collapsing the track if waypoints are dense.
-                lb_val = -1.0
-                ub_val = 1.0
+                # Use a conservative default corridor so the QP stays feasible
+                # when heading error is large at startup.
+                lb_val = -3.0
+                ub_val = 3.0
 
             waypoints.append(
                 MPCWaypoint(
@@ -170,6 +171,7 @@ class TT02MPCNode(Node):
     """ROS2 MPC node using TT02 driver topics and Ackermann commands."""
 
     TOPIC_ODOM = "/odom"
+    TOPIC_SCAN = "/scan"
     TOPIC_COMMAND = "/car/command"
 
     def __init__(self) -> None:
@@ -202,6 +204,14 @@ class TT02MPCNode(Node):
         self.declare_parameter("wp_ordered_start_index", -1)
         self.declare_parameter("wp_reached_distance", 0.45)
         self.declare_parameter("wp_pass_margin", 0.05)
+        self.declare_parameter("wp_require_progress_for_pass", True)
+        self.declare_parameter("wp_pass_progress_margin", 0.0)
+        self.declare_parameter("wp_max_advance_per_tick", 1)
+        self.declare_parameter("lidar_enable_guard", True)
+        self.declare_parameter("lidar_front_window_deg", 20.0)
+        self.declare_parameter("lidar_slow_distance", 1.0)
+        self.declare_parameter("lidar_stop_distance", 0.55)
+        self.declare_parameter("lidar_slow_speed", 0.35)
         self.declare_parameter("debug_decisions", False)
         self.declare_parameter("debug_decisions_every", 10)
 
@@ -249,6 +259,30 @@ class TT02MPCNode(Node):
         self.wp_ordered_start_index = int(self.get_parameter("wp_ordered_start_index").value)
         self.wp_reached_distance = max(0.05, float(self.get_parameter("wp_reached_distance").value))
         self.wp_pass_margin = max(0.0, float(self.get_parameter("wp_pass_margin").value))
+        self.wp_require_progress_for_pass = bool(
+            self.get_parameter("wp_require_progress_for_pass").value
+        )
+        self.wp_pass_progress_margin = float(
+            self.get_parameter("wp_pass_progress_margin").value
+        )
+        self.wp_max_advance_per_tick = max(
+            1, int(self.get_parameter("wp_max_advance_per_tick").value)
+        )
+        self.lidar_enable_guard = bool(self.get_parameter("lidar_enable_guard").value)
+        self.lidar_front_window_deg = max(
+            1.0, float(self.get_parameter("lidar_front_window_deg").value)
+        )
+        self.lidar_slow_distance = max(
+            0.05, float(self.get_parameter("lidar_slow_distance").value)
+        )
+        self.lidar_stop_distance = max(
+            0.01, float(self.get_parameter("lidar_stop_distance").value)
+        )
+        self.lidar_slow_speed = max(
+            0.0, float(self.get_parameter("lidar_slow_speed").value)
+        )
+        if self.lidar_stop_distance >= self.lidar_slow_distance:
+            self.lidar_stop_distance = max(0.01, 0.7 * self.lidar_slow_distance)
         self.debug_decisions = bool(self.get_parameter("debug_decisions").value)
         self.debug_decisions_every = int(self.get_parameter("debug_decisions_every").value)
         if self.debug_decisions_every <= 0:
@@ -256,6 +290,7 @@ class TT02MPCNode(Node):
 
         self._tick_counter = 0
         self._ordered_wp_id: int | None = None
+        self._front_obstacle_distance: float | None = None
 
         wp_x = [float(v) for v in self.get_parameter("waypoints_x").value]
         wp_y = [float(v) for v in self.get_parameter("waypoints_y").value]
@@ -274,8 +309,8 @@ class TT02MPCNode(Node):
             wp_ub = wp_ub_raw
         else:
             self.get_logger().warn(
-                "No waypoints_lb/waypoints_ub provided; using adaptive lateral bounds "
-                "derived from waypoint spacing."
+                "No waypoints_lb/waypoints_ub provided; using fixed lateral bounds "
+                "[-3.0, 3.0] m around centerline."
             )
 
         self.reference_path = RosReferencePath(
@@ -337,6 +372,7 @@ class TT02MPCNode(Node):
         self.latest_pose: tuple[float, float, float] | None = None
 
         self.create_subscription(Odometry, self.TOPIC_ODOM, self._on_odometry, 10)
+        self.create_subscription(LaserScan, self.TOPIC_SCAN, self._on_scan, 10)
         self.command_publisher = self.create_publisher(AckermannDrive, self.TOPIC_COMMAND, 10)
         self.create_timer(self.control_period, self._on_control_tick)
 
@@ -348,6 +384,11 @@ class TT02MPCNode(Node):
         )
         self.get_logger().info(
             f"MPC debug_decisions={self.debug_decisions} every={self.debug_decisions_every} ticks"
+        )
+        self.get_logger().info(
+            "Lidar guard: "
+            f"enabled={self.lidar_enable_guard} front_window={self.lidar_front_window_deg:.1f}deg "
+            f"slow<= {self.lidar_slow_distance:.2f}m stop<= {self.lidar_stop_distance:.2f}m"
         )
 
     def _on_odometry(self, msg: Odometry) -> None:
@@ -363,6 +404,53 @@ class TT02MPCNode(Node):
     def _waypoint_distance(self, wp_id: int, x: float, y: float) -> float:
         wp = self.reference_path.waypoints[wp_id]
         return float(math.hypot(wp.x - x, wp.y - y))
+
+    def _segment_progress(self, wp_id: int, x: float, y: float) -> float:
+        wp_cur = self.reference_path.waypoints[wp_id]
+        wp_next = self.reference_path.waypoints[(wp_id + 1) % len(self.reference_path.waypoints)]
+
+        seg_x = wp_next.x - wp_cur.x
+        seg_y = wp_next.y - wp_cur.y
+        seg_norm_sq = seg_x * seg_x + seg_y * seg_y
+        if seg_norm_sq < 1e-9:
+            return 0.0
+
+        rel_x = x - wp_cur.x
+        rel_y = y - wp_cur.y
+        return float((rel_x * seg_x + rel_y * seg_y) / seg_norm_sq)
+
+    def _on_scan(self, msg: LaserScan) -> None:
+        if not msg.ranges:
+            self._front_obstacle_distance = None
+            return
+
+        ranges = np.asarray(msg.ranges, dtype=float)
+        angles = msg.angle_min + np.arange(ranges.size, dtype=float) * msg.angle_increment
+        front_window = math.radians(self.lidar_front_window_deg)
+
+        valid = np.isfinite(ranges) & (ranges >= msg.range_min) & (ranges <= msg.range_max)
+        front = np.abs(angles) <= front_window
+        selected = ranges[valid & front]
+
+        if selected.size == 0:
+            self._front_obstacle_distance = None
+            return
+
+        self._front_obstacle_distance = float(np.min(selected))
+
+    def _apply_lidar_guard(self, speed_cmd: float) -> float:
+        if not self.lidar_enable_guard or speed_cmd <= 0.0:
+            return speed_cmd
+
+        if self._front_obstacle_distance is None:
+            return speed_cmd
+
+        d_front = self._front_obstacle_distance
+        if d_front <= self.lidar_stop_distance:
+            return 0.0
+        if d_front <= self.lidar_slow_distance:
+            return min(speed_cmd, self.lidar_slow_speed)
+        return speed_cmd
 
     def _find_nearest_waypoint_index(self, x: float, y: float) -> tuple[int, float]:
         n_wp = len(self.reference_path.waypoints)
@@ -392,18 +480,27 @@ class TT02MPCNode(Node):
             # - also advance if next waypoint is clearly closer (current waypoint
             #   likely missed/passed), which avoids orbiting around one target.
             reached_radius = self.wp_reached_distance + self.wp_pass_margin
+            advanced_count = 0
             for _ in range(n_wp):
                 next_wp_id = (selected_wp_id + 1) % n_wp
                 next_wp_dist = self._waypoint_distance(next_wp_id, x, y)
 
                 reached_by_radius = selected_wp_dist <= reached_radius
                 passed_current_wp = next_wp_dist + self.wp_pass_margin < selected_wp_dist
+                if self.wp_require_progress_for_pass:
+                    progress = self._segment_progress(selected_wp_id, x, y)
+                    passed_current_wp = (
+                        passed_current_wp and progress >= self.wp_pass_progress_margin
+                    )
 
                 if not (reached_by_radius or passed_current_wp):
                     break
 
                 selected_wp_id = next_wp_id
                 selected_wp_dist = next_wp_dist
+                advanced_count += 1
+                if advanced_count >= self.wp_max_advance_per_tick:
+                    break
 
             self._ordered_wp_id = selected_wp_id
         else:
@@ -438,10 +535,13 @@ class TT02MPCNode(Node):
 
         speed_cmd = float(np.clip(u[0], self.min_speed, self.max_speed))
         steer_cmd = float(np.clip(u[1], -self.max_steer_rad, self.max_steer_rad))
+        speed_cmd = self._apply_lidar_guard(speed_cmd)
+        if speed_cmd <= 0.0:
+            steer_cmd = 0.0
 
         msg = AckermannDrive()
         msg.speed = speed_cmd
-        msg.steering_angle = steer_cmd
+        msg.steering_angle = -steer_cmd
         self.command_publisher.publish(msg)
 
         if self.debug_decisions and self._tick_counter % self.debug_decisions_every == 0:
@@ -460,7 +560,8 @@ class TT02MPCNode(Node):
                 f"active_wp={active_wp_id} wp=({active_wp.x:.2f},{active_wp.y:.2f}) "
                 f"wp_psi={active_wp.psi:.2f} wp_kappa={active_wp.kappa:.3f} wp_vref={active_wp.v_ref:.2f} "
                 f"errors=(e_y={e_y:.2f},e_psi={e_psi:.2f}) "
-                f"u_raw=(v={u[0]:.2f},delta={u[1]:.2f}) u_cmd=(v={speed_cmd:.2f},delta={steer_cmd:.2f})"
+                f"u_raw=(v={u[0]:.2f},delta={u[1]:.2f}) u_cmd=(v={speed_cmd:.2f},delta={steer_cmd:.2f}) "
+                f"lidar_front={self._front_obstacle_distance if self._front_obstacle_distance is not None else float('nan'):.2f}"
             )
 
     def destroy_node(self) -> bool:
