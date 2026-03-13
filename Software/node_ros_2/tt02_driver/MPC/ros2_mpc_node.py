@@ -18,6 +18,12 @@ from tt02_driver.gilbert_driver_generic import GilbertDriverGeneric
 
 from .MPC import MPC
 from .spatial_bicycle_models import BicycleModel, TemporalState
+from .tools import (
+    get_bool_param,
+    get_float_param,
+    laser_scan_to_vehicle_frame,
+    read_lidar_calibration,
+)
 
 try:
     sparse = importlib.import_module("scipy.sparse")
@@ -208,6 +214,11 @@ class TT02MPCNode(Node):
         self.declare_parameter("wp_pass_progress_margin", 0.0)
         self.declare_parameter("wp_max_advance_per_tick", 1)
         self.declare_parameter("lidar_enable_guard", True)
+        self.declare_parameter("scan_angle_offset_deg", 0.0)
+        self.declare_parameter("scan_mirror", True)
+        self.declare_parameter("scan_reverse", False)
+        self.declare_parameter("lidar_offset_x", 0.0)
+        self.declare_parameter("lidar_offset_y", 0.0)
         self.declare_parameter("lidar_front_window_deg", 20.0)
         self.declare_parameter("lidar_slow_distance", 1.0)
         self.declare_parameter("lidar_stop_distance", 0.55)
@@ -255,12 +266,12 @@ class TT02MPCNode(Node):
         self.osqp_max_iter = int(self.get_parameter("osqp_max_iter").value)
         self.osqp_eps_abs = float(self.get_parameter("osqp_eps_abs").value)
         self.osqp_eps_rel = float(self.get_parameter("osqp_eps_rel").value)
-        self.wp_ordered_mode = bool(self.get_parameter("wp_ordered_mode").value)
+        self.wp_ordered_mode = get_bool_param(self, "wp_ordered_mode", True)
         self.wp_ordered_start_index = int(self.get_parameter("wp_ordered_start_index").value)
         self.wp_reached_distance = max(0.05, float(self.get_parameter("wp_reached_distance").value))
         self.wp_pass_margin = max(0.0, float(self.get_parameter("wp_pass_margin").value))
-        self.wp_require_progress_for_pass = bool(
-            self.get_parameter("wp_require_progress_for_pass").value
+        self.wp_require_progress_for_pass = get_bool_param(
+            self, "wp_require_progress_for_pass", True
         )
         self.wp_pass_progress_margin = float(
             self.get_parameter("wp_pass_progress_margin").value
@@ -268,7 +279,7 @@ class TT02MPCNode(Node):
         self.wp_max_advance_per_tick = max(
             1, int(self.get_parameter("wp_max_advance_per_tick").value)
         )
-        self.lidar_enable_guard = bool(self.get_parameter("lidar_enable_guard").value)
+        self.lidar_enable_guard = get_bool_param(self, "lidar_enable_guard", True)
         self.lidar_front_window_deg = max(
             1.0, float(self.get_parameter("lidar_front_window_deg").value)
         )
@@ -283,7 +294,7 @@ class TT02MPCNode(Node):
         )
         if self.lidar_stop_distance >= self.lidar_slow_distance:
             self.lidar_stop_distance = max(0.01, 0.7 * self.lidar_slow_distance)
-        self.debug_decisions = bool(self.get_parameter("debug_decisions").value)
+        self.debug_decisions = get_bool_param(self, "debug_decisions", False)
         self.debug_decisions_every = int(self.get_parameter("debug_decisions_every").value)
         if self.debug_decisions_every <= 0:
             self.debug_decisions_every = 1
@@ -390,6 +401,13 @@ class TT02MPCNode(Node):
             f"enabled={self.lidar_enable_guard} front_window={self.lidar_front_window_deg:.1f}deg "
             f"slow<= {self.lidar_slow_distance:.2f}m stop<= {self.lidar_stop_distance:.2f}m"
         )
+        initial_calibration = read_lidar_calibration(self)
+        self.get_logger().info(
+            "Lidar calibration (MPC): "
+            f"offset={math.degrees(initial_calibration.angle_offset_rad):.1f}deg "
+            f"mirror={initial_calibration.mirror} reverse={initial_calibration.reverse} "
+            f"sensor_offset=({initial_calibration.offset_x:.2f},{initial_calibration.offset_y:.2f})m"
+        )
 
     def _on_odometry(self, msg: Odometry) -> None:
         q = msg.pose.pose.orientation
@@ -424,13 +442,18 @@ class TT02MPCNode(Node):
             self._front_obstacle_distance = None
             return
 
-        ranges = np.asarray(msg.ranges, dtype=float)
-        angles = msg.angle_min + np.arange(ranges.size, dtype=float) * msg.angle_increment
-        front_window = math.radians(self.lidar_front_window_deg)
+        calibration = read_lidar_calibration(self)
+        x_car, y_car = laser_scan_to_vehicle_frame(msg, calibration)
+        if x_car.size == 0:
+            self._front_obstacle_distance = None
+            return
 
-        valid = np.isfinite(ranges) & (ranges >= msg.range_min) & (ranges <= msg.range_max)
-        front = np.abs(angles) <= front_window
-        selected = ranges[valid & front]
+        front_window = math.radians(
+            max(1.0, float(self.get_parameter("lidar_front_window_deg").value))
+        )
+        front_angle = np.abs(np.arctan2(y_car, x_car)) <= front_window
+        in_front = x_car > 0.0
+        selected = np.hypot(x_car, y_car)[front_angle & in_front]
 
         if selected.size == 0:
             self._front_obstacle_distance = None
@@ -439,17 +462,24 @@ class TT02MPCNode(Node):
         self._front_obstacle_distance = float(np.min(selected))
 
     def _apply_lidar_guard(self, speed_cmd: float) -> float:
-        if not self.lidar_enable_guard or speed_cmd <= 0.0:
+        lidar_enable_guard = get_bool_param(self, "lidar_enable_guard", self.lidar_enable_guard)
+        if not lidar_enable_guard or speed_cmd <= 0.0:
             return speed_cmd
 
         if self._front_obstacle_distance is None:
             return speed_cmd
 
+        lidar_slow_distance = max(0.05, get_float_param(self, "lidar_slow_distance", self.lidar_slow_distance))
+        lidar_stop_distance = max(0.01, get_float_param(self, "lidar_stop_distance", self.lidar_stop_distance))
+        lidar_slow_speed = max(0.0, get_float_param(self, "lidar_slow_speed", self.lidar_slow_speed))
+        if lidar_stop_distance >= lidar_slow_distance:
+            lidar_stop_distance = max(0.01, 0.7 * lidar_slow_distance)
+
         d_front = self._front_obstacle_distance
-        if d_front <= self.lidar_stop_distance:
+        if d_front <= lidar_stop_distance:
             return 0.0
-        if d_front <= self.lidar_slow_distance:
-            return min(speed_cmd, self.lidar_slow_speed)
+        if d_front <= lidar_slow_distance:
+            return min(speed_cmd, lidar_slow_speed)
         return speed_cmd
 
     def _find_nearest_waypoint_index(self, x: float, y: float) -> tuple[int, float]:

@@ -42,6 +42,7 @@ setup(
             'pilot = tt02_driver.circuit_follower:main',
             'pilot_alt = tt02_driver.circuit_follower_alt:main',
             'mpc = MPC.ros2_mpc_node:main',
+            'mpc_plotter = MPC.ros2_mpc_plotter:main',
             'rl1_env = tt02_driver.rl1_env:main',
             'rl1_agent = tt02_driver.rl1_agent:main',
         ],
