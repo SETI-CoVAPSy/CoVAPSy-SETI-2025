@@ -328,9 +328,10 @@ if __name__ == "__main__":
     # Test get_opponent_positions
     print("Testing get_opponent_positions...")
     # Convert to Cartesian coordinates (x, y)
+    # Convention: local +x forward, local +y left.
     lidar_angles_rad = np.deg2rad(lidar_angles)
-    lidar_x = lidar_ranges_in_fov * np.sin(lidar_angles_rad)
-    lidar_y = lidar_ranges_in_fov * np.cos(lidar_angles_rad)   
+    lidar_x = lidar_ranges_in_fov * np.cos(lidar_angles_rad)
+    lidar_y = lidar_ranges_in_fov * np.sin(lidar_angles_rad)
     lidar_positions = cast(
         LidarCartesianPositions, np.stack((lidar_x, lidar_y), axis=-1)
     )
