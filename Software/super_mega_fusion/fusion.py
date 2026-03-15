@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from typing import cast
 from dataclasses import dataclass
-from common import (
+from .common import (
     SegmentationLabels,
     ImageLabels,
     ImageArrayHSV,
@@ -148,7 +148,7 @@ def lidar_get_labelled_ranges(
 
 def clustering(
     points: np.ndarray[tuple[int, ...], np.dtype[np.float32]],
-    eps: float = 0.8,
+    eps: float = 0.5,
     min_samples: int = 3,
 ) -> np.ndarray[tuple[int], np.dtype[np.int32]]:
     """Cluster points using a spatial-index based DBSCAN variant.
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     SEGMENTATION_MASKS: dict[int, HSVMaskRanges] = {
         # SegmentationLabels.FREE.value: ...
         SegmentationLabels.WALL_RED.value: HSVMaskRanges(
-            h=(162.0, 12.0), s=(200.0, 255.0), v=(15.0, 255.0)
+            h=(150.0, 12.0), s=(63.0, 255.0), v=(70.0, 255.0)
         ),
         SegmentationLabels.WALL_GREEN.value: HSVMaskRanges(
             h=(33.0, 72.0), s=(157.0, 255.0), v=(47.0, 255.0)

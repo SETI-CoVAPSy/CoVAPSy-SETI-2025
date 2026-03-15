@@ -9,7 +9,7 @@ from typing import TypeAlias, cast, Optional
 from dataclasses import dataclass
 from scipy.ndimage import binary_dilation, distance_transform_edt
 from enum import Enum
-from common import SegmentationLabels
+from .common import SegmentationLabels
 from matplotlib import pyplot as plt
 
 # ====================================================

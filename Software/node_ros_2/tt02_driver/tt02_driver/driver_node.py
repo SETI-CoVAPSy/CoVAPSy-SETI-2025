@@ -106,6 +106,10 @@ class TT02DriverNode(Node):
         self.hw_lidar.start_motor()
         self.hw_lidar_iterator = self.hw_lidar.iter_scans(scan_type='express')
         self.hw_lidar_buffer = np.zeros(360) # Buffer à remplir
+        self.lidar_range_min = 0.05  # Minimum range in meters
+        self.lidar_range_max = 30.0
+        self.angle_min = -math.pi
+        self.angle_max = math.pi
     
     def _init_simulation(self, use_camera: bool) -> None:
         from tt02_driver.gilbert_driver_webots import GilbertDriverWebots
@@ -273,12 +277,14 @@ class TT02DriverNode(Node):
     @override
     def destroy_node(self) -> None:
         self.driver.close()
+        if self._target == "hardware":         
+            self.hw_lidar.disconnect()
         super().destroy_node()
 
 def main(args: list[str] | None = None):
     rclpy.init(args=args) 
     node = TT02DriverNode(
-        "hardware", 
+        "simulation", 
         use_camera=True
     )
     #rclpy.spin(node)
@@ -286,7 +292,7 @@ def main(args: list[str] | None = None):
         # Schedule camera capture in delay s in parallel
         from PIL import Image
         from pathlib import Path
-        delay = 1
+        delay = 10
         import threading
         def capture_camera():
             import time
