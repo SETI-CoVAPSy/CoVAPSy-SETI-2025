@@ -219,7 +219,7 @@ class TT02MPCNode(Node):
         self.declare_parameter("scan_reverse", False)
         self.declare_parameter("lidar_offset_x", 0.0)
         self.declare_parameter("lidar_offset_y", 0.0)
-        self.declare_parameter("lidar_front_window_deg", 20.0)
+        self.declare_parameter("lidar_front_window_deg", 60.0)
         self.declare_parameter("lidar_slow_distance", 1.0)
         self.declare_parameter("lidar_stop_distance", 0.55)
         self.declare_parameter("lidar_slow_speed", 0.35)
@@ -302,6 +302,11 @@ class TT02MPCNode(Node):
         self._tick_counter = 0
         self._ordered_wp_id: int | None = None
         self._front_obstacle_distance: float | None = None
+        # Canonical transformed LIDAR points in vehicle frame (x forward, y left).
+        self._scan_pts: tuple[np.ndarray, np.ndarray] = (
+            np.empty(0, dtype=float),
+            np.empty(0, dtype=float),
+        )
 
         wp_x = [float(v) for v in self.get_parameter("waypoints_x").value]
         wp_y = [float(v) for v in self.get_parameter("waypoints_y").value]
@@ -439,11 +444,13 @@ class TT02MPCNode(Node):
 
     def _on_scan(self, msg: LaserScan) -> None:
         if not msg.ranges:
+            self._scan_pts = (np.empty(0, dtype=float), np.empty(0, dtype=float))
             self._front_obstacle_distance = None
             return
 
         calibration = read_lidar_calibration(self)
         x_car, y_car = laser_scan_to_vehicle_frame(msg, calibration)
+        self._scan_pts = (x_car, y_car)
         if x_car.size == 0:
             self._front_obstacle_distance = None
             return
@@ -459,7 +466,8 @@ class TT02MPCNode(Node):
             self._front_obstacle_distance = None
             return
 
-        self._front_obstacle_distance = float(np.min(selected))
+        # Robust against isolated noisy returns while still using the full front sector.
+        self._front_obstacle_distance = float(np.percentile(selected, 10.0))
 
     def _apply_lidar_guard(self, speed_cmd: float) -> float:
         lidar_enable_guard = get_bool_param(self, "lidar_enable_guard", self.lidar_enable_guard)
